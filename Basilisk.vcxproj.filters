@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Physics">
+      <UniqueIdentifier>{07deb732-294a-4ef8-88eb-5740470897ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Input">
+      <UniqueIdentifier>{598d4167-adec-4a8e-b255-5516b575b767}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="File I/O">
+      <UniqueIdentifier>{595fe4fb-8aa6-4161-a4b9-29187ff814be}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AI">
+      <UniqueIdentifier>{ba026514-d195-4423-893f-ba97063ecb49}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scripting">
+      <UniqueIdentifier>{1c0c6234-2fc2-484c-9a65-31d4f825aecc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Audio">
+      <UniqueIdentifier>{87f8ad7a-d920-4ebe-a11a-762acfad4284}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Optimizations">
+      <UniqueIdentifier>{dfdb059f-1978-47c9-8e82-dbfb59f42cef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Visual Effects">
+      <UniqueIdentifier>{e980d24c-a22b-46f9-b3dc-fe64b3ad1755}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{97dc24b7-e65a-4f5b-883a-7fa7af4f0614}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Front End">
+      <UniqueIdentifier>{c4b13e22-8b1f-47f2-990f-4b9eeb86ac51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Gameplay">
+      <UniqueIdentifier>{6fe1a4fc-e359-4098-afe9-3d03a95ef427}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering">
+      <UniqueIdentifier>{d98b6d7e-ea21-4d5c-9639-ef461f94b3f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core">
+      <UniqueIdentifier>{6fd1c088-a2bc-422a-85ce-b0265fec45c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\2D">
+      <UniqueIdentifier>{17809a7d-0c37-4c84-9189-1186163540a6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\3D">
+      <UniqueIdentifier>{dbdd8418-b234-4957-8984-d9b5d7430e99}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\profiling.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\common.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\basilisk.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\entity.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\pipeline.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\device.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\effect.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\task graph.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\traits.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\Texture2D.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\Scene.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\exceptions.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\profiling.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="source\common.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="source\basilisk.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\pipeline.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\device.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\core\task graph.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

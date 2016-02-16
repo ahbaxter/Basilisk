@@ -1,0 +1,6 @@
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/dependencies/SDL2/CMakeFiles/uninstall.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/dependencies/SDL2/CMakeFiles/SDL2-static.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/dependencies/SDL2/CMakeFiles/ALL_BUILD.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/dependencies/SDL2/CMakeFiles/ZERO_CHECK.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/dependencies/SDL2/CMakeFiles/SDL2.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/dependencies/SDL2/CMakeFiles/SDL2main.dir

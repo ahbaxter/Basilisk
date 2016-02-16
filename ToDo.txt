@@ -1,0 +1,23 @@
+IMMEDIATE:
+
+Window Output
+Input Collection
+Static Mesh Display
+Basic Shaders (Textures, then lighting)
+
+UNAVOIDABLE:
+Automate offline shader compilation
+Assimp
+Bullet
+RakNet? Maybe use the experimental STL networking library now.
+
+
+COMPLICATED:
+
+Physics
+Blueprints/Prefabs?
+
+LONG-TERM:
+
+Editor
+Node-Based Shader Editor
