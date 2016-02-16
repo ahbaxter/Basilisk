@@ -1,3 +1,13 @@
+/**
+\file   common.h
+\author Andrew Baxter
+\date   February 16, 2015
+
+Includes Vulkan/Direct3D 12 headers, and sets up a `define` to export/import DLLs
+
+\todo Include Vulkan headers once it's released
+*/
+
 #pragma once
 
 
@@ -8,7 +18,11 @@
 #endif
 
 #ifdef _VULKAN
-#include <vulkan.h>
+
+//
+//
+//
+
 #else
 #include <d3d12.h>
 #include <dxgi1_4.h>

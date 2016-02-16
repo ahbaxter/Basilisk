@@ -29,8 +29,8 @@
     <ClInclude Include="include\rendering\effect.h" />
     <ClInclude Include="include\rendering\entity.h" />
     <ClInclude Include="include\rendering\pipeline.h" />
-    <ClInclude Include="include\rendering\Scene.h" />
-    <ClInclude Include="include\rendering\Texture2D.h" />
+    <ClInclude Include="include\rendering\scene.h" />
+    <ClInclude Include="include\rendering\texture2d.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\basilisk.cpp" />

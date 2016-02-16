@@ -75,14 +75,14 @@
     <ClInclude Include="include\core\traits.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\Texture2D.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="include\rendering\Scene.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
     <ClInclude Include="include\exceptions.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\scene.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\texture2d.h">
+      <Filter>Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
