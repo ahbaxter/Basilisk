@@ -1,23 +1,21 @@
 /**
 \file   common.cpp
 \author Andrew Baxter
-\date   February 16, 2015
+\date   February 17, 2015
 
-Links to Direct3D 12 libraries
+Links to Direct3D 12 and Vulkan libraries
 
-\todo Link with Vulkan libraries once it's released
 */
 
 #include "../include/common.h"
 
-#ifdef _VULKAN
 
-//
-//
-//
+#ifdef ENVIRONMENT64
+#pramga comment(lib, "Bin/vulkan-1.lib")
+#elif ENVIRONMENT32
+#pragma comment(lib, "Bin32/vulkan-1.lib")
+#endif
 
-#else
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
-#endif

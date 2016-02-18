@@ -1,10 +1,57 @@
-#pragma once
-#include "../common.h"
+/**
+\file   device.h
+\author Andrew Baxter
+\date   February 17, 2016
+
+The virtual interface with the selected graphics API
+
+\todo Document
+\todo Finish
+\todo Make into factories for pipelines
+
+*/
+
+#ifndef BASILISK_DEVICE_H
+#define BASILISK_DEVICE_H
+
+#include "common.h"
+#include "pipeline.h"
 
 
 namespace Basilisk
 {
-	class DYNAMIC D3D12Device final
+	template<class Impl>
+	class Device
+	{
+	public:
+		inline const Impl &GetImplementation()
+		{
+			return static_cast<Impl&>(*this);
+		}
+
+		//Allow implementations, and only implementations to instanciate a Device object
+		//Makes sure that CRTP is not sidestepped
+		friend class D3D12Device;
+		friend class VulkanDevice;
+	private:
+		Device();
+		~Device();
+
+
+	};
+
+	class D3D12Device : public Device<D3D12Device>
+	{
+
+	};
+
+	class VulkanDevice : public Device<VulkanDevice>
+	{
+
+	};
+
+
+	class D3D12Device final
 	{
 	public:
 		D3D12Device();
@@ -54,10 +101,6 @@ namespace Basilisk
 		char m_videoCardDesc[DESC_LEN];
 		unsigned int m_videoCardMemory; //in megabytes
 	};
-
-#ifdef _VULKAN
-	typedef VulkanDevice Device;
-#else
-	typedef D3D12Device Device;
-#endif
 }
+
+#endif

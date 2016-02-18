@@ -1,10 +1,23 @@
-#pragma once
+/**
+\file   profiling.h
+\author Andrew Baxter
+\date February 17, 2016
+
+Defines the `Profiler` class, which tracks performance across various parts of the engine
+
+\todo Finish writing
+
+*/
+
+#ifndef BASILISK_PROFILING_H
+#define BASILISK_PROFILING_H
+
 #include "common.h"
 #include <chrono>
 
 namespace Basilisk
 {
-	DYNAMIC class Profiler
+	/*class Profiler
 	{
 	public:
 		Profiler();// :
@@ -19,5 +32,7 @@ namespace Basilisk
 		std::chrono::time_point<std::chrono::high_resolution_clock> m_startTime;
 		std::chrono::duration<double> m_totalTime;
 		unsigned long long m_numInvocations;
-	};
+	};*/
 }
+
+#endif

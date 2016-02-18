@@ -1,32 +1,25 @@
 /**
 \file   common.h
 \author Andrew Baxter
-\date   February 16, 2015
+\date   February 17, 2015
 
-Includes Vulkan/Direct3D 12 headers, and sets up a `define` to export/import DLLs
+Includes universally-required headers
 
-\todo Include Vulkan headers once it's released
 */
 
-#pragma once
+#ifndef BASILISK_COMMON_H
+#define BASILISK_COMMON_H
 
+#include <stdint.h>
+//#include <string> //Covered in result.h
 
-#ifdef _WINDLL
-#define DYNAMIC __declspec(dllexport) 
-#else
-#define DYNAMIC __declspec(dllimport) 
-#endif
-
-#ifdef _VULKAN
-
-//
-//
-//
-
-#else
+#include <vulkan.h>
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #ifdef _DEBUG
 #include <D3D12SDKLayers.h>
 #endif
+
+#include "result.h"
+
 #endif

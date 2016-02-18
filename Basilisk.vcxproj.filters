@@ -19,9 +19,6 @@
     <Filter Include="Audio">
       <UniqueIdentifier>{87f8ad7a-d920-4ebe-a11a-762acfad4284}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Optimizations">
-      <UniqueIdentifier>{dfdb059f-1978-47c9-8e82-dbfb59f42cef}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Visual Effects">
       <UniqueIdentifier>{e980d24c-a22b-46f9-b3dc-fe64b3ad1755}</UniqueIdentifier>
     </Filter>
@@ -57,32 +54,23 @@
     <ClInclude Include="include\basilisk.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\entity.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
     <ClInclude Include="include\rendering\pipeline.h">
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="include\rendering\device.h">
       <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\effect.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="include\core\task graph.h">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="include\core\traits.h">
-      <Filter>Core</Filter>
-    </ClInclude>
-    <ClInclude Include="include\exceptions.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="include\rendering\scene.h">
       <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\texture2d.h">
-      <Filter>Rendering</Filter>
+    <ClInclude Include="include\result.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\task_graph.h">
+      <Filter>Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -92,16 +80,16 @@
     <ClCompile Include="source\common.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="source\basilisk.cpp">
-      <Filter>Core</Filter>
-    </ClCompile>
     <ClCompile Include="source\rendering\pipeline.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="source\rendering\device.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="source\core\task graph.cpp">
+    <ClCompile Include="source\result.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="source\core\task_graph.cpp">
       <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>

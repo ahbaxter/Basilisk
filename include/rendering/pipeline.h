@@ -1,64 +1,104 @@
-#pragma once
-#include "../Common.h"
+/**
+\file   pipeline.h
+\author Andrew Baxter
+\date   February 17, 2015
+
+
+
+*/
+
+#ifndef BASILISK_PIPELINE_H
+#define BASILISK_PIPELINE_H
+
+#include "../common.h"
 #include <vector>
 
 namespace Basilisk
 {
-	class D3D12Device;
-
-	enum InputFormat
+	enum class InputFormat : uint8_t
 	{
-		INPUT_FORMAT_UNKOWN = 0,
-		INPUT_FORMAT_TYPELESS32,
-		INPUT_FORMAT_FLOAT32,
-		INPUT_FORMAT_UINT32,
-		INPUT_FORMAT_SINT32,
-		INPUT_FORMAT_UNORM32,
-		INPUT_FORMAT_SNORM32,
-		INPUT_FORMAT_TYPELESS16,
-		INPUT_FORMAT_FLOAT16,
-		INPUT_FORMAT_UINT16,
-		INPUT_FORMAT_SINT16,
-		INPUT_FORMAT_UNORM16,
-		INPUT_FORMAT_SNORM16,
-		INPUT_FORMAT_TYPELESS8,
-		INPUT_FORMAT_FLOAT8,
-		INPUT_FORMAT_UINT8,
-		INPUT_FORMAT_SINT8,
-		INPUT_FORMAT_UNORM8,
-		INPUT_FORMAT_SNORM8
+		Unknown = 0,
+
+		Typeless32,
+		Float32,
+		UInt32,
+		SInt32,
+		UNorm32,
+		SNorm32,
+
+		Typeless16,
+		Float16,
+		UInt16,
+		SInt16,
+		UNorm16,
+		SNorm16,
+
+		Typeless8,
+		Float8,
+		UInt8,
+		SInt8,
+		UNorm8,
+		SNorm8,
 	};
 
-	class D3D12Pipeline
+	/*
+	enum class ShaderFormat
+	{
+
+	};
+	*/
+
+	/**
+	\brief 
+	To create a `Pipeline` object, you must use the `Device::CreatePipeline` method
+
+	\tparam Impl Sets up the Curiously Recurring Template Pattern
+	*/
+	template<class Impl>
+	class Pipeline
 	{
 	public:
-		D3D12Pipeline(D3D12Device *device);
+		inline const Impl &GetImplementation()
+		{
+			return static_cast<Impl&>(*this);
+		}
 
-		bool addShader(const char *fileName, const char *target, const char *entryPoint);
-		void addAttribute(const char *name, InputFormat format, unsigned int count = 1);
-		void addUniform(const char *name, InputFormat format, unsigned int count = 1);
-		bool compile();
+		//Result AddShader(const std::string &text);
+		//Result AddShader(const std::string &fileName);
+		Result DescribeAttribute(const std::string &name, InputFormat format, uint8_t count = 1);
+		Result DescribeUniform(const std::string &name, InputFormat format, uint8_t count = 1);
+		Result Compile();
 
-		void release();
+		Result Release();
 
-		//D3D12-specific functions
+		//Allow implementations, and only implementations to instanciate a Device object
+		//Makes sure that CRTP is not sidestepped
+		friend class D3D12Pipeline;
+		friend class VulkanPipeline;
+	private:
+		Pipeline();
+		~Pipeline();
+	};
 
+
+	class D3D12Pipeline : public Pipeline<D3D12Pipeline>
+	{
+	public:
+		friend class D3D12Device; //Can I do this?
 		inline ID3D12PipelineState *getPipelineState();
 	private:
-
 		std::vector<ID3DBlob*> m_shaders;
 		ID3DBlob *signature, *error;
 		ID3D12PipelineState *m_pso;
 	};
 
-	class VulkanPipeline
+
+	class VulkanPipeline : public Pipeline<VulkanPipeline>
 	{
+	public:
+		friend class VulkanDevice; //Can I do this?
 	};
 
-#ifdef _VULKAN
-	typedef VulkanPipeline Pipeline;
-#else
-	typedef D3D12Pipeline Pipeline;
-#endif
-
 }
+
+#endif

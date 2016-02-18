@@ -1,23 +1,29 @@
 IMMEDIATE:
 
-Window Output
+Migrate to stdint variable types
+Vulkan upgrade
 Input Collection
 Static Mesh Display
 Basic Shaders (Textures, then lighting)
 
 UNAVOIDABLE:
-Automate offline shader compilation
-Assimp
+
+Pre-Compiled Headers
+Audio
 Bullet
+Assimp
+Automate offline shader compilation
 RakNet? Maybe use the experimental STL networking library now.
 
 
 COMPLICATED:
 
-Physics
+Scripting
 Blueprints/Prefabs?
+AI
 
 LONG-TERM:
 
 Editor
-Node-Based Shader Editor
+Node-Based Shaders
+Materials Library
