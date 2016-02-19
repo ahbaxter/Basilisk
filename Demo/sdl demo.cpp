@@ -4,7 +4,6 @@
 #include <iostream>
 #include <string>
 #include <chrono>
-//#include <Windows.h>
 
 #include "../include/basilisk.h"
 
@@ -196,6 +195,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pScmdline,
 
 int main(int argc, char *argv[])
 {
+
 	SDL_Init(SDL_INIT_VIDEO);
 
 	const int w = 720, h = 480;
@@ -216,8 +216,8 @@ int main(int argc, char *argv[])
 	HWND hwnd = wmInfo.info.win.window;
 
 
-	Basilisk::Device device;
-	if (!device.initialize(hwnd, w, h, false, false))
+	Basilisk::D3D12Device device;
+	if (!device.Initialize(hwnd, w, h, false, false))
 	{
 		OutputDebugString(Basilisk::error.getDetails());
 		return 0;

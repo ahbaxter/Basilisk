@@ -3,15 +3,17 @@
 \author Andrew Baxter
 \date   February 17, 2015
 
+Controls shader pipelines and (eventually) compute operations
 
+\todo Implement compute pipelines
 
 */
 
 #ifndef BASILISK_PIPELINE_H
 #define BASILISK_PIPELINE_H
 
-#include "../common.h"
 #include <vector>
+#include "common.h"
 
 namespace Basilisk
 {
@@ -41,64 +43,120 @@ namespace Basilisk
 		SNorm8,
 	};
 
-	/*
-	enum class ShaderFormat
-	{
-
-	};
+	/**
+	A direct mirror of Vulkan's `VkShaderStageFlagBits` structure
+	Will be translated at runtime for use in a D3D12 pipeline
 	*/
+	enum class ShaderStage : uint32_t
+	{
+		Vertex = 0x00000001,
+		TesselationControl = 0x00000002,
+		TesselationEvaluation = 0x00000004,
+		Geometry = 0x00000008,
+		Fragment = 0x00000010,
+		Compute = 0x00000020,
+		AllGraphics = 0x1F,
+		All = 0x7FFFFFFF
+	};
+	
 
 	/**
-	\brief 
-	To create a `Pipeline` object, you must use the `Device::CreatePipeline` method
+	Uses CRTP abstraction to represent an ambiguous device
 
 	\tparam Impl Sets up the Curiously Recurring Template Pattern
 	*/
 	template<class Impl>
-	class Pipeline
+	class GraphicsPipeline abstract
 	{
 	public:
-		inline const Impl &GetImplementation()
-		{
+		/**
+		Gets the derivative class of this object
+		\return The derivative class of this object
+		*/
+		inline const Impl &GetImplementation() {
 			return static_cast<Impl&>(*this);
 		}
 
-		//Result AddShader(const std::string &text);
-		//Result AddShader(const std::string &fileName);
-		Result DescribeAttribute(const std::string &name, InputFormat format, uint8_t count = 1);
-		Result DescribeUniform(const std::string &name, InputFormat format, uint8_t count = 1);
-		Result Compile();
+		inline Result AddShaderFromSource(const std::string &text, ShaderStage stage) {
+			return GetImplementation().AddShaderFromSource(text, stage);
+		}
+		inline Result AddShaderFromFile(const std::string &filename, ShaderStage stage) {
+			return GetImplementation().AddShaderFromFile(filename, stage);
+		}
+		inline Result MapAttribute(const std::string &name, InputFormat format, uint8_t count = 1) {//Return type is incorrect for sure
+			return GetImplementation().MapAttribute(name, format, count);
+		}
+		inline Result MapUniform(const std::string &name, InputFormat format, uint8_t count = 1) {//Return type is incorrect for sure
+			return GetImplementation().MapUniform(name, format, count);
+		}
+		/**
+		\brief Compiles the shaders into a complete pipeline
+		`AddShader`, `MapAttribute`, and `MapUniform` will fail after `Compile` has been called
 
-		Result Release();
+		\return Details about potential failure
+		*/
+		inline Result Compile() {
+			return GetImplementation().Compile();
+		}
+		/**
+		\brief Sets this pipeline as active in the given command buffer
+		\param[in] commandBuffer The command buffer to bind to
 
-		//Allow implementations, and only implementations to instanciate a Device object
-		//Makes sure that CRTP is not sidestepped
-		friend class D3D12Pipeline;
-		friend class VulkanPipeline;
+		\return Details about potential failure
+		*/
+		template<class CmdBufferType>
+		inline Result SetAsActive(const CmdBufferType &commandBuffer) {
+			return GetImplementation().SetAsActive(commandBuffer)
+		}
+
+		/**
+		Cleans up after itself
+		*/
+		inline void Release() {
+			GetImplementation().Release();
+		}
+
+		//Allow Devices, and only Devices, to create Pipeline objects
+		//Makes sure that CRTP and factory design is not sidestepped
+		template<class DeviceImpl> friend class Device;
 	private:
-		Pipeline();
-		~Pipeline();
+		Pipeline() = 0;
+		~Pipeline() = 0;
 	};
 
 
-	class D3D12Pipeline : public Pipeline<D3D12Pipeline>
+	class D3D12GraphicsPipeline : public GraphicsPipeline<D3D12GraphicsPipeline>
 	{
-	public:
-		friend class D3D12Device; //Can I do this?
-		inline ID3D12PipelineState *getPipelineState();
 	private:
+		D3D12GraphicsPipeline();
+		~D3D12GraphicsPipeline() = default;
+
 		std::vector<ID3DBlob*> m_shaders;
 		ID3DBlob *signature, *error;
 		ID3D12PipelineState *m_pso;
 	};
 
 
-	class VulkanPipeline : public Pipeline<VulkanPipeline>
+	class VulkanGraphicsPipeline : public GraphicsPipeline<VulkanGraphicsPipeline>
 	{
-	public:
-		friend class VulkanDevice; //Can I do this?
+	private:
+		VulkanGraphicsPipeline();
+		~VulkanGraphicsPipeline() = default;
 	};
 
+
+	/*
+	template<class Impl>
+	class ComputePipeline abstract
+	{
+	public:
+
+		template<DeviceImpl> friend class
+	protected:
+		ComputePipeline() = 0;
+		~ComputePipeline() = 0;
+	};
+	*/
 }
 
 #endif

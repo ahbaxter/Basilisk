@@ -12,6 +12,7 @@
 
 #include "common.h"
 #include "rendering/device.h"
+#include "core/task_graph.h"
 #include "profiling.h"
 
 #endif

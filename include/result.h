@@ -1,11 +1,11 @@
 /**
 \file   result.h
 \author Andrew Baxter
-\date   February 17, 2016
+\date   February 18, 2016
 
 \brief Defines a series of generic error codes to be used by components of the game engine
 
-\todo Any use for an `InputException` branch?
+\todo Finish documenting
 */
 
 #ifndef BASILISK_RESULT_H
@@ -14,70 +14,66 @@
 #include <string>
 
 namespace Basilisk
-{	extern std::string errorMessage;
+{
+	/**
+	Used to store a global error message giving specifics about what went wrong
+	*/
+	extern std::string errorMessage;
 
-	enum class Result : uint8_t
+	/**
+
+	*/
+	enum class Result : int8_t
 	{
-		Success = 0,
-		Failure, //Avoid using. Can always be more specific.
+		Failure = -10,
 		IllegalArgument,
 		OutOfMemory,
 
-		Timeout,
-		Interrupted,
-
 		EndOfStream,
 		ParseError,
+		FileNotFound,
 
 		BrokenPipe,
 		ConnectionRefused,
 		ConnectionReset,
+
+		DeviceLost,
+
+		Success, // = 0
+
+		NotReady,
+		Timeout,
+		Incomplete,
 	};
 
-	inline bool Eval(const Result &val) { return (val != Result::Success); }
+	inline bool Succeeded(Result val) { return (static_cast<std::underlying_type<Result>::type>(val) >= 0); }
+	inline bool Failed(Result val) { return (static_cast<std::underlying_type<Result>::type>(val) < 0); }
 
 	inline const std::string &ResultToString(const Result &val)
 	{
-		const std::string lookup[11] = {
-			"Success",
+		const std::string lookup[14] = {
 			"Failure",
 			"Illegal Argument",
 			"Out of Memory",
 
-			"Timeout",
-			"Interrupted",
-
 			"End of Stream",
 			"Parsing Error",
-
+			"File not Found",
 
 			"Broken Pipe",
 			"Connection Refused",
-			"Connection Reset"
+			"Connection Reset",
+
+			"Device Lost"
+
+			"Success",
+
+			"Not Ready"
+			"Timeout",
+			"Incomplete",
 		};
-		return lookup[static_cast<std::underlying_type<Result>::type>(val)];
+		return lookup[static_cast<std::underlying_type<Result>::type>(val) + 10];
 	}
-
-
-	#define DECLARE_EXCEPTION(name, parent) \
-	class name : public parent \
-	{ \
-	public: \
-		name() : parent(#name) { } \
-		name(const char *message) : parent(message) { } \
-		const char *toString() { return (#name + std::string(": ") + what()).c_str(); } \
-	};
-
-	DECLARE_EXCEPTION(Exception, std::runtime_error);
-
-		DECLARE_EXCEPTION(IOException, Exception);
-			DECLARE_EXCEPTION(FileSystemException, IOException);
-				DECLARE_EXCEPTION(FileNotFoundException, FileSystemException);
-				DECLARE_EXCEPTION(FileExistsException, FileSystemException);
-				DECLARE_EXCEPTION(FileFormatException, FileSystemException);
-				DECLARE_EXCEPTION(IsADirectoryException, FileSystemException);
-				DECLARE_EXCEPTION(NotADirectoryEcxeption, FileSystemException);
-
 }
 
 #endif

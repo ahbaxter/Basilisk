@@ -11,7 +11,6 @@ Includes universally-required headers
 #define BASILISK_COMMON_H
 
 #include <stdint.h>
-//#include <string> //Covered in result.h
 
 #include <vulkan.h>
 #include <d3d12.h>
@@ -20,6 +19,24 @@ Includes universally-required headers
 #include <D3D12SDKLayers.h>
 #endif
 
-#include "result.h"
+#include "result.h" //#includes <string>
+
+/**
+Houses all components of the game engine
+*/
+namespace Basilisk
+{
+	template<typename T>
+	struct Bounds2D
+	{
+		T width, height;
+	};
+
+	template<typename T>
+	struct Bounds3D
+	{
+		T width, height, depth;
+	};
+}
 
 #endif

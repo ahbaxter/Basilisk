@@ -22,7 +22,6 @@
     <ClInclude Include="include\basilisk.h" />
     <ClInclude Include="include\common.h" />
     <ClInclude Include="include\core\task_graph.h" />
-    <ClInclude Include="include\core\traits.h" />
     <ClInclude Include="include\result.h" />
     <ClInclude Include="include\profiling.h" />
     <ClInclude Include="include\rendering\device.h" />

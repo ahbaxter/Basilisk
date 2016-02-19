@@ -60,9 +60,6 @@
     <ClInclude Include="include\rendering\device.h">
       <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="include\core\traits.h">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="include\rendering\scene.h">
       <Filter>Rendering</Filter>
     </ClInclude>

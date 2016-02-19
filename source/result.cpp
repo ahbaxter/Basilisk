@@ -3,7 +3,7 @@
 \author Andrew Baxter
 \date February 17, 2016
 
-Just 
+Just follows through with `Basilisk::errorMessage`, which was declared as external
 
 */
 

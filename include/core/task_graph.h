@@ -9,7 +9,7 @@ Distributes tasks among an arbitrary number of persistent threads
 
 
 
-#include "../common.h"
+#include "common.h"
 #include <thread>
 #include <future>
 #include <mutex>

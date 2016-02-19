@@ -12,6 +12,7 @@ Represents a persistent game level
 #ifndef BASILISK_SCENE_H
 #define BASILISK_SCENE_H
 
+#include "common.h"
 #include <glm/glm/fwd.hpp>
 
 namespace Basilisk
@@ -23,14 +24,19 @@ namespace Basilisk
 		Create an empty scene
 		*/
 		Scene();
-		/**
-		Load a scene from a file
-		
-		\param[in] filename The file to read from
-		\throws 
-		*/
 
 		~Scene();
+
+		/**
+		\brief Load a scene from a file
+		Clears the old scene, if any
+
+		\param[in] filename The file to read from
+		*/
+		Result Load(const std::string &filename);
+
+		void Clear();
+
 	private:
 
 	};

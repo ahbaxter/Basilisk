@@ -1,7 +1,22 @@
-#include "../include/rendering/pipeline.h"
+/**
+\file   pipeline.h
+\author Andrew Baxter
+\date   February 18, 2016
+
+Controls the behavior of `Pipeline` devices
+
+\todo Finish
+
+*/
+
+
+#include "rendering/pipeline.h"
 
 using namespace Basilisk;
 
+
+
+/*
 
 DXGI_FORMAT translate(InputFormat format, unsigned int count)
 {
@@ -12,11 +27,6 @@ D3D12Pipeline::D3D12Pipeline(D3D12Device *device)
 {
 	signature = nullptr;
 	error = nullptr;
-}
-
-inline ID3D12PipelineState *D3D12Pipeline::getPipelineState()
-{
-	return m_pso;
 }
 
 template<class T> void safeRelease(T *obj)
@@ -32,3 +42,4 @@ void D3D12Pipeline::release()
 {
 	safeRelease(m_pso);
 }
+*/

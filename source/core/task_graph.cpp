@@ -1,5 +1,16 @@
+/**
+\file   task_graph.cpp
+\author Andrew Baxter
+\date February 18, 2016
+
+Controls the scheduling and execution of per-frame behaviors
+
+\todo Finish
+
+*/
+
 #include "core/task_graph.h"
-#include "core/traits.h"
+//#include "core/traits.h"
 
 //using namespace Basilisk;
 //
