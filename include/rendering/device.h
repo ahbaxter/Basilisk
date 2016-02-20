@@ -60,7 +60,7 @@ namespace Basilisk
 		/**
 		\brief Creates a graphics pipeline
 		\param[out] out Where to store the resulting pipeline
-		\tparam Specifies which API to create the pipeline for
+		\tparam PipelineType Specifies which API to create the pipeline for
 		\todo Multiple creation?
 		*/
 		template<class PipelineType>
@@ -70,7 +70,7 @@ namespace Basilisk
 		/**
 		\brief Creates a compute pipeline
 		\param[out] out Where to store the resulting pipeline
-		\tparam Specifies which API to create the pipeline for
+		\tparam PipelineType Specifies which API to create the pipeline for
 		\todo Multiple creation?
 		*/
 		template<class PipelineType>
@@ -134,11 +134,28 @@ namespace Basilisk
 	{
 	public:
 		Result Initialize(HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, bool fullscreen = true, bool vsync = false);
+
+		void Release();
+
+		/**
+		\brief Creates a D3D12 graphics pipeline
+		\param[out] out Where to store the resulting pipeline
+		\tparam PipelineType Will not compile unless the type is `D3DGraphicsPipeline`
+		\todo Multiple creation?
+		*/
+		template<class PipelineType>
+		Result CreateGraphicsPipeline(PipelineType *out);
+		/**
+		\brief Creates a D3D12 com,pute pipeline
+		\param[out] out Where to store the resulting pipeline
+		\tparam PipelineType Will not compile unless the type is `D3DComputePipeline`
+		\todo Multiple creation?
+		*/
+		template<class PipelineType>
+		Result CreateComputePipeline(PipelineType *out);
 		
 		void SetVsyncEnabled(bool vsync);
 		void SetFullscreenEnabled(bool fullscreen);
-
-		void Release();
 
 	private:
 		D3D12Device();

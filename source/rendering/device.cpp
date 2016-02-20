@@ -122,12 +122,12 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 		Basilisk::errorMessage = "Could not retrieve primary monitor's display modes";
 		return Result::Failure;
 	}
-	\* \todo Store all resolutions, so it can be changed quickly at runtime
+	/* \todo Store all resolutions, so it can be changed quickly at runtime
 	for (i = 0; i < numModes; ++i)
 	{
 		displayModeList[i].Height
 		displayModeList[i].Width
-	}*\
+	}*/
 
 	//Get the video card description
 	result = adapter->GetDesc(&adapterDesc);
@@ -181,8 +181,8 @@ void D3D12Device::Release()
 
 	//Release the fence
 	safeRelease(m_fence);
-	//Release the empty pipe line state
-	safeRelease(m_pipelineState);
+	//Release the empty pipeline state
+	//safeRelease(m_pipelineState);
 	//Release the command list
 	safeRelease(m_commandList);
 	//Release the command allocator
@@ -200,6 +200,11 @@ void D3D12Device::Release()
 	*/
 	//Release the device
 	safeRelease(m_device);
+}
+
+template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPipeline>(D3D12GraphicsPipeline *out)
+{
+	
 }
 
 /*
