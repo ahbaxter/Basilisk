@@ -1,7 +1,7 @@
 /**
 \file   pipeline.h
 \author Andrew Baxter
-\date   February 17, 2015
+\date   February 19, 2015
 
 Controls shader pipelines and (eventually) compute operations
 
@@ -17,6 +17,11 @@ Controls shader pipelines and (eventually) compute operations
 
 namespace Basilisk
 {
+	
+	/**
+	\brief The size and type of a shader's input component
+	Does not track the number of components
+	*/
 	enum class InputFormat : uint8_t
 	{
 		Unknown = 0,
@@ -61,7 +66,7 @@ namespace Basilisk
 	
 
 	/**
-	Uses CRTP abstraction to represent an ambiguous device
+	Uses CRTP abstraction to represent an API-ambiguous device
 
 	\tparam Impl Sets up the Curiously Recurring Template Pattern
 	*/
@@ -77,21 +82,43 @@ namespace Basilisk
 			return static_cast<Impl&>(*this);
 		}
 
+		/**
+		Loads in a shader from source code
+		\param[in] text The GLSL/HLSL source code
+		\param[in] stage The pipeline stage to add the shader to
+		*/
 		inline Result AddShaderFromSource(const std::string &text, ShaderStage stage) {
 			return GetImplementation().AddShaderFromSource(text, stage);
 		}
+		/**
+		Loads in a shader from a local file
+		\param[in] filename The location of the GLSL/HLSL source code
+		\param[in] stage The pipeline stage to add the shader to
+		*/
 		inline Result AddShaderFromFile(const std::string &filename, ShaderStage stage) {
 			return GetImplementation().AddShaderFromFile(filename, stage);
 		}
+		/**
+		Lets the engine know about a per-vertex attribute
+		\param[in] name The name of the in-shader variable name
+		\param[in] format The data format of the variable
+		\param[in] count The number of components, if the variable is a vector type
+		*/
 		inline Result MapAttribute(const std::string &name, InputFormat format, uint8_t count = 1) {//Return type is incorrect for sure
 			return GetImplementation().MapAttribute(name, format, count);
 		}
+		/**
+		Lets the engine know about a uniforms
+		\param[in] name The name of the in-shader variable name
+		\param[in] format The data format of the variable
+		\param[in] count The number of components, if the variable is a vector type
+		*/
 		inline Result MapUniform(const std::string &name, InputFormat format, uint8_t count = 1) {//Return type is incorrect for sure
 			return GetImplementation().MapUniform(name, format, count);
 		}
 		/**
-		\brief Compiles the shaders into a complete pipeline
-		`AddShader`, `MapAttribute`, and `MapUniform` will fail after `Compile` has been called
+		\brief Compiles the shaders into a fully baked pipeline
+		\warning `AddShader`, `MapAttribute`, and `MapUniform` will fail after `Compile` has been called
 
 		\return Details about potential failure
 		*/
@@ -101,6 +128,7 @@ namespace Basilisk
 		/**
 		\brief Sets this pipeline as active in the given command buffer
 		\param[in] commandBuffer The command buffer to bind to
+		\tparam CmdBufferType Specifies the API to use
 
 		\return Details about potential failure
 		*/
@@ -120,28 +148,47 @@ namespace Basilisk
 		//Makes sure that CRTP and factory design is not sidestepped
 		template<class DeviceImpl> friend class Device;
 	private:
-		Pipeline() = 0;
-		~Pipeline() = 0;
+		Pipeline() = 0; //Leave unimplemented
+		~Pipeline() = 0; //Leave unimplemented
 	};
 
-
+	/**
+	Implements the `GraphicsPipeline` for D3D12
+	*/
 	class D3D12GraphicsPipeline : public GraphicsPipeline<D3D12GraphicsPipeline>
 	{
 	private:
+		/**
+		Just zeroes all the memory
+		*/
 		D3D12GraphicsPipeline();
+		/**
+		All the clean-up is handled in `Release()`
+		*/
 		~D3D12GraphicsPipeline() = default;
 
-		std::vector<ID3DBlob*> m_shaders;
-		ID3DBlob *signature, *error;
-		ID3D12PipelineState *m_pso;
+		std::vector<ID3DBlob*> m_shaders; //Stores compiled (but unlinked) shaders
+		ID3DBlob *signature, //D3D12's version of uniforms and attributes
+			*error; //Keep track of errors while ompiling
+		ID3D12PipelineState *m_pipeline; //A D3D12 pipeline state object (PSO)
 	};
 
-
+	/**
+	Implements the `GraphicsPipeline` for Vulkan
+	*/
 	class VulkanGraphicsPipeline : public GraphicsPipeline<VulkanGraphicsPipeline>
 	{
 	private:
+	/**
+		Just zeroes all the memory
+		*/
 		VulkanGraphicsPipeline();
+		/**
+		All the clean-up is handled in `Release()`
+		*/
 		~VulkanGraphicsPipeline() = default;
+		
+		VkPipeline m_pipeline; //A Vulkan pipeline object
 	};
 
 
