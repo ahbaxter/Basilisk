@@ -6,8 +6,7 @@
 The virtual interface with the selected graphics API
 I honestly have no idea if this design is going to work
 
-\todo Devices do too much right now -- distribute to multiple classes
-\todo Add an `Instance` class, to make sure we're not automatically restricted to a single GPU at a time
+\todo Do Devices need to know resolution to initialize? Don't think so.
 
 */
 
@@ -16,7 +15,7 @@ I honestly have no idea if this design is going to work
 
 #include "common.h"
 #include "pipeline.h"
-
+//#include "swap_chain.h"
 
 namespace Basilisk
 {
@@ -46,8 +45,8 @@ namespace Basilisk
 
 		\todo Add support for non-Windows systems
 		*/
-		inline Result Initialize(HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, bool fullscreen = true, bool vsync = false) {
-			return GetImplementation().Initialize(window, width, height, fullscreen, vsync);
+		inline Result Initialize(HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }) {
+			return GetImplementation().Initialize(window, resolution, fullscreen, vsync);
 		}
 		
 		/**
@@ -59,6 +58,7 @@ namespace Basilisk
 
 		/**
 		\brief Creates a graphics pipeline
+		After creation, Basilisk is not responsible for memory management of the resultant object
 		\param[out] out Where to store the resulting pipeline
 		\tparam Specifies which API to create the pipeline for
 		\todo Multiple creation?
@@ -69,6 +69,7 @@ namespace Basilisk
 		}
 		/**
 		\brief Creates a compute pipeline
+		After creation, Basilisk is not responsible for memory management of the resultant object
 		\param[out] out Where to store the resulting pipeline
 		\tparam Specifies which API to create the pipeline for
 		\todo Multiple creation?
@@ -79,67 +80,50 @@ namespace Basilisk
 		}
 
 		/**
-		Checks if vsync is enabled
-		\return `true` if vsync is enabled; `false` otherwise
+		\brief Creates a swap chain
+		After creation, Basilisk is not responsible for memory management of the resultant object
+		\param[out] out Where to store the resulting swap chain
+		\tparam Specifies which API to create the swap chain for
 		*/
-		inline bool IsVsyncEnabled() { return m_vsync; }
-		/**
-		Checks if the target window is fullscreen
-		\return `true` if the appication is fullscreen; `false` otherwise
-		*/
-		inline bool IsFullscreen() { return m_fullscreen; }
-		/**
-		Gets the video card name
-		\return the video card name
-		*/
-		inline const char *GetVideoCardName() { return m_videoCardDesc; }
-		/**
-		Gets the total amount of GPU memory, in megabytes
-		\return The total amount of GPU memory, in megabytes
-		*/
-		inline uint32_t GetVideoCardMemory() { return m_videoCardMemory; } //In megabytes
-
-		/**
-		Turns vsync on or off
-		\param[in] vsync `true` to enable vsync; `false` to disable
-		*/
-		inline void SetVsyncEnabled(bool vsync) {
-			GetImplementation().SetVsyncEnabled(vsync)
+		template<class SwapChainType>
+		inline Result CreateSwapChain(SwapChainType *out) {
+			return GetImplementation().CreateSwapChain(out);
 		}
-		/**
-		Turns vsync on or off
-		\param[in] vsync `true` to enable vsync; `false` to disable
-		*/
-		inline void SetFullscreenEnabled(bool fullscreen) {
-			GetImplementation().SetFullscreenEnabled(fullscreen);
-		}
-
-		//Only allow derivative classes to be instantiated
-		//Makes sure that CRTP is not sidestepped
-		friend class D3D12Device;
-		friend class VulkanDevice;
 	protected:
 		Device() = 0;
 		~Device() = 0;
-
-		static constexpr size_t DESC_LEN = 128;
-		char m_videoCardDesc[DESC_LEN];
-		uint32_t m_videoCardMemory;
-
-		bool m_vsync; //Migrate to a SwapChain object
-		bool m_fullscreen; //Migrate to a SwapChain object
 	};
 
 	class D3D12Device : public Device<D3D12Device>
 	{
 	public:
-		Result Initialize(HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, bool fullscreen = true, bool vsync = false);
+		friend class D3D12Instance; //Make sure that this can be instantiated through a proper `Instance` object
+
+		Result Initialize(HWND window, Bounds2D<uint16_t> resolution = { 0, 0 });
+
+		/**
+		Gives an error message when idiots ty to create a Vulkan pipeline with a D3D12 device
+		*/
+		template<class PipelineType> Result CreateGraphicsPipeline(PipelineType *out)
+		{
+			static_assert("Basilisk::D3D12Device::CreateGraphicsPipeline is not specialized for the provided type.");
+		}
+		/**
+		Partial specialization of `Device::CreateGraphicsPipeline`, working only with compatible API objects
+
+		\param[out] out A pointer to an empty pipeline object
+		\return Details about potential failure
+		*/
+		template<> Result CreateGraphicsPipeline<D3D12GraphicsPipeline>(D3D12GraphicsPipeline *out);
 		
-		void SetVsyncEnabled(bool vsync);
-		void SetFullscreenEnabled(bool fullscreen);
 
+
+
+		
+		/**
+		Cleans up after itself
+		*/
 		void Release();
-
 	private:
 		D3D12Device();
 		~D3D12Device() = default; //All handled in the `Release()` function
@@ -162,11 +146,79 @@ namespace Basilisk
 
 	class VulkanDevice : public Device<VulkanDevice>
 	{
+	public:
+		friend class VulkanInstance; //Make sure that this can be instantiated through a proper `Instance` object
+
+		Result Initialize(HWND window, Bounds2D<uint16_t> resolution = { 0, 0 });
+		/**
+		Gives an error message when idiots ty to create a D3D12 pipeline with a Vulkan device
+		*/
+		template<class PipelineType> Result CreateGraphicsPipeline(PipelineType *out)
+		{
+			static_assert("Basilisk::VulkanDevice::CreateGraphicsPipeline is not specialized for the provided type.");
+		}
+		/**
+		Partial specialization of `Device::CreateGraphicsPipeline`, working only with compatible API objects
+
+		\param[out] out A pointer to an empty pipeline object
+		\return Details about potential failure
+		*/
+		template<> Result CreateGraphicsPipeline<VulkanGraphicsPipeline>(VulkanGraphicsPipeline *out);
+
+		/**
+		Cleans up after itself
+		*/
+		void Release();
 	private:
 		VulkanDevice();
-		~VulkanDevice() = default; //All handled in the `Release()` function -- once written
+		~VulkanDevice() = default; //All handled in the `Release()` function
 
 		VkDevice m_device;
+	};
+
+
+	struct PhysicalDevice
+	{
+		uint32_t memory; //In MB
+		std::string name;
+		std::string vendor;
+	};
+
+
+	template<class Impl>
+	class Instance abstract
+	{
+		inline const Impl &GetImplementation()
+		{
+			return static_cast<Impl&>(*this);
+		}
+
+		/**
+		\param[out] count
+		\param[out] details
+		*/
+		inline Result EnumeratePhysicalDevices(uint8_t *count, PhysicalDevice **details) {
+			return GetImplementation().EnumeratePhysicalDevices(count, details);
+		}
+
+		/**
+		\param[in] gpuIndex
+		\param[out] out
+		*/
+		template<class DeviceType>
+		inline Result CreateDevice(uint8_t gpuIndex, DeviceType *out) {
+			return GetImplementation().CreateDevice(gpuIndex, out);
+		}
+	};
+
+	class D3D12Instance : Instance<D3D12Instance>
+	{
+
+	};
+
+	class VulkanInstance : Instance<VulkanInstance>
+	{
+
 	};
 
 	/*

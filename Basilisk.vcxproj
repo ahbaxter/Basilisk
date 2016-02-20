@@ -27,6 +27,7 @@
     <ClInclude Include="include\rendering\device.h" />
     <ClInclude Include="include\rendering\pipeline.h" />
     <ClInclude Include="include\rendering\scene.h" />
+    <ClInclude Include="include\swap_chain.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\common.cpp" />

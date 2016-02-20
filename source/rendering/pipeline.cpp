@@ -11,6 +11,7 @@ Controls the behavior of `Pipeline` devices
 
 
 #include "rendering/pipeline.h"
+#include "rendering/device.h"
 
 using namespace Basilisk;
 

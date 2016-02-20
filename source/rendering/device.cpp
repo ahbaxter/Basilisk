@@ -204,7 +204,8 @@ void D3D12Device::Release()
 
 template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPipeline>(D3D12GraphicsPipeline *out)
 {
-	
+	out = new D3D12GraphicsPipeline;
+	return out->Initialize()
 }
 
 /*

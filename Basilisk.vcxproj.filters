@@ -69,6 +69,9 @@
     <ClInclude Include="include\core\task_graph.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="include\swap_chain.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\profiling.cpp">

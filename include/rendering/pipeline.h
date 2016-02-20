@@ -83,6 +83,14 @@ namespace Basilisk
 		}
 
 		/**
+		*/
+		template<class DeviceType>
+		inline Result Initialize()
+		{
+
+		}
+
+		/**
 		Loads in a shader from source code
 		\param[in] text The GLSL/HLSL source code
 		\param[in] stage The pipeline stage to add the shader to
@@ -143,10 +151,6 @@ namespace Basilisk
 		inline void Release() {
 			GetImplementation().Release();
 		}
-
-		//Allow Devices, and only Devices, to create Pipeline objects
-		//Makes sure that CRTP and factory design is not sidestepped
-		template<class DeviceImpl> friend class Device;
 	private:
 		Pipeline() = 0; //Leave unimplemented
 		~Pipeline() = 0; //Leave unimplemented
@@ -157,6 +161,10 @@ namespace Basilisk
 	*/
 	class D3D12GraphicsPipeline : public GraphicsPipeline<D3D12GraphicsPipeline>
 	{
+	public:
+		//Allow Devices, and only Devices, to create Pipeline objects
+		//Makes sure that CRTP and factory design is not sidestepped
+		friend class D3D12Device;
 	private:
 		/**
 		Just zeroes all the memory
@@ -178,6 +186,10 @@ namespace Basilisk
 	*/
 	class VulkanGraphicsPipeline : public GraphicsPipeline<VulkanGraphicsPipeline>
 	{
+	public:
+		//Allow Devices, and only Devices, to create Pipeline objects
+		//Makes sure that CRTP and factory design is not sidestepped
+		friend class VulkanDevice;
 	private:
 	/**
 		Just zeroes all the memory
