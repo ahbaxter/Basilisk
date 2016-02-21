@@ -69,7 +69,10 @@
     <ClInclude Include="include\core\task_graph.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="include\swap_chain.h">
+    <ClInclude Include="include\rendering\command_buffer.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\swap_chain.h">
       <Filter>Rendering</Filter>
     </ClInclude>
   </ItemGroup>
@@ -91,6 +94,9 @@
     </ClCompile>
     <ClCompile Include="source\core\task_graph.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\swap_chain.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

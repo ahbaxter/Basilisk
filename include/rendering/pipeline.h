@@ -85,9 +85,8 @@ namespace Basilisk
 		/**
 		*/
 		template<class DeviceType>
-		inline Result Initialize()
-		{
-
+		inline Result Initialize(const DeviceType &device) {
+			return GetImplementation().Initialize(device);
 		}
 
 		/**

@@ -30,7 +30,6 @@ D3D12Device::D3D12Device() :
 	m_fence(nullptr),
 	m_fenceEvent(nullptr)*/
 {
-	memset(&m_videoCardDesc[0], 0, DESC_LEN);
 	/*m_backBufferRenderTarget[0] = nullptr;
 	m_backBufferRenderTarget[1] = nullptr;*/
 }

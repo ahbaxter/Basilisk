@@ -22,12 +22,13 @@
     <ClInclude Include="include\basilisk.h" />
     <ClInclude Include="include\common.h" />
     <ClInclude Include="include\core\task_graph.h" />
+    <ClInclude Include="include\rendering\command_buffer.h" />
+    <ClInclude Include="include\rendering\swap_chain.h" />
     <ClInclude Include="include\result.h" />
     <ClInclude Include="include\profiling.h" />
     <ClInclude Include="include\rendering\device.h" />
     <ClInclude Include="include\rendering\pipeline.h" />
     <ClInclude Include="include\rendering\scene.h" />
-    <ClInclude Include="include\swap_chain.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\common.cpp" />
@@ -35,6 +36,7 @@
     <ClCompile Include="source\profiling.cpp" />
     <ClCompile Include="source\rendering\device.cpp" />
     <ClCompile Include="source\rendering\pipeline.cpp" />
+    <ClCompile Include="source\rendering\swap_chain.cpp" />
     <ClCompile Include="source\result.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
