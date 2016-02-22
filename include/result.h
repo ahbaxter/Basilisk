@@ -1,11 +1,10 @@
 /**
 \file   result.h
 \author Andrew Baxter
-\date   February 18, 2016
+\date   February 21, 2016
 
-\brief Defines a series of generic error codes to be used by components of the game engine
+Defines a series of all-purpose error (or success) codes to be used by components of the game engine
 
-\todo Finish documenting
 */
 
 #ifndef BASILISK_RESULT_H
@@ -21,12 +20,15 @@ namespace Basilisk
 	extern std::string errorMessage;
 
 	/**
+	All-pupose error (or success) codes to be used by components of the Basilisk game engine
 
+	\todo Is `DeviceLost` already covered in `APIFailure`? I figure it has its merits.
 	*/
 	enum class Result : int8_t
 	{
-		Failure = -10,
+		APIFailure = -11,
 		IllegalArgument,
+		IllegalState,
 		OutOfMemory,
 
 		EndOfStream,
@@ -46,14 +48,37 @@ namespace Basilisk
 		Incomplete,
 	};
 
-	inline bool Succeeded(Result val) { return (static_cast<std::underlying_type<Result>::type>(val) >= 0); }
-	inline bool Failed(Result val) { return (static_cast<std::underlying_type<Result>::type>(val) < 0); }
+	/**
+	Checks if a Basilisk result succeeded
 
+	\param[in] val The result to check
+	\return `true` if the result indicates success; `false` otherwise
+	*/
+	inline bool Succeeded(Result val) {
+		return (static_cast<std::underlying_type<Result>::type>(val) >= 0);
+	}
+	/**
+	Checks if a Basilisk result failed
+
+	\param[in] val The result to check
+	\return `true` if the result indicates failure; `false` otherwise
+	*/
+	inline bool Failed(Result val) {
+		return (static_cast<std::underlying_type<Result>::type>(val) < 0);
+	}
+	
+	/**
+	Translates a Basilisk result into English
+
+	\param[in] val The result to translate
+	\return English
+	*/
 	inline const std::string &ResultToString(const Result &val)
 	{
-		const std::string lookup[14] = {
-			"Failure",
+		const std::string lookup[15] = {
+			"API Failure",
 			"Illegal Argument",
+			"Illegal State",
 			"Out of Memory",
 
 			"End of Stream",

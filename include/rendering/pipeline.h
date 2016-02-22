@@ -66,27 +66,23 @@ namespace Basilisk
 	
 
 	/**
-	Uses CRTP abstraction to represent an API-ambiguous device
+	Represents an API-ambiguous graphics pipeline
 
 	\tparam Impl Sets up the Curiously Recurring Template Pattern
+
+	\todo Make an AddSampler() function, or equivalent
+	\todo Rework the MapAttribute/MapUniform system
 	*/
 	template<class Impl>
 	class GraphicsPipeline abstract
 	{
 	public:
 		/**
-		Gets the derivative class of this object
-		\return The derivative class of this object
+		Gets this class's RCTP implementation
+		\return This class's RCTP implementation
 		*/
 		inline const Impl &GetImplementation() {
 			return static_cast<Impl&>(*this);
-		}
-
-		/**
-		*/
-		template<class DeviceType>
-		inline Result Initialize(const DeviceType &device) {
-			return GetImplementation().Initialize(device);
 		}
 
 		/**
@@ -110,17 +106,21 @@ namespace Basilisk
 		\param[in] name The name of the in-shader variable name
 		\param[in] format The data format of the variable
 		\param[in] count The number of components, if the variable is a vector type
+
+		\todo Return offset?
 		*/
-		inline Result MapAttribute(const std::string &name, InputFormat format, uint8_t count = 1) {//Return type is incorrect for sure
+		inline Result MapAttribute(const std::string &name, InputFormat format, uint8_t count = 1) {
 			return GetImplementation().MapAttribute(name, format, count);
 		}
 		/**
-		Lets the engine know about a uniforms
+		Lets the engine know about a uniform variable
 		\param[in] name The name of the in-shader variable name
 		\param[in] format The data format of the variable
 		\param[in] count The number of components, if the variable is a vector type
+
+		\todo Return offset?
 		*/
-		inline Result MapUniform(const std::string &name, InputFormat format, uint8_t count = 1) {//Return type is incorrect for sure
+		inline Result MapUniform(const std::string &name, InputFormat format, uint8_t count = 1) {
 			return GetImplementation().MapUniform(name, format, count);
 		}
 		/**
@@ -132,17 +132,6 @@ namespace Basilisk
 		inline Result Compile() {
 			return GetImplementation().Compile();
 		}
-		/**
-		\brief Sets this pipeline as active in the given command buffer
-		\param[in] commandBuffer The command buffer to bind to
-		\tparam CmdBufferType Specifies the API to use
-
-		\return Details about potential failure
-		*/
-		template<class CmdBufferType>
-		inline Result SetAsActive(const CmdBufferType &commandBuffer) {
-			return GetImplementation().SetAsActive(commandBuffer)
-		}
 
 		/**
 		Cleans up after itself
@@ -150,19 +139,16 @@ namespace Basilisk
 		inline void Release() {
 			GetImplementation().Release();
 		}
-	private:
-		Pipeline() = 0; //Leave unimplemented
-		~Pipeline() = 0; //Leave unimplemented
 	};
 
 	/**
-	Implements the `GraphicsPipeline` for D3D12
+	Implements the `GraphicsPipeline` interface for Direct3D 12
 	*/
 	class D3D12GraphicsPipeline : public GraphicsPipeline<D3D12GraphicsPipeline>
 	{
 	public:
 		//Allow Devices, and only Devices, to create Pipeline objects
-		//Makes sure that CRTP and factory design is not sidestepped
+		//Makes sure that CRTP and factory design are not sidestepped
 		friend class D3D12Device;
 	private:
 		/**
@@ -174,23 +160,24 @@ namespace Basilisk
 		*/
 		~D3D12GraphicsPipeline() = default;
 
-		std::vector<ID3DBlob*> m_shaders; //Stores compiled (but unlinked) shaders
-		ID3DBlob *signature, //D3D12's version of uniforms and attributes
-			*error; //Keep track of errors while ompiling
-		ID3D12PipelineState *m_pipeline; //A D3D12 pipeline state object (PSO)
+		std::vector<ID3DBlob*> m_shaders;  //Stores compiled (but unlinked) shaders
+		ID3DBlob *signature;               //D3D12's version of uniforms and attributes, pretty sure
+		ID3DBlob *error;                   //Keep track of errors while ompiling
+		ID3D12PipelineState *m_pipeline;   //A D3D12 pipeline state object (PSO)
+		ID3D12Device *m_device;            //Stores the device which created it, because the API object hasn't actually been created until `Compile()` is called
 	};
 
 	/**
-	Implements the `GraphicsPipeline` for Vulkan
+	Implements the `GraphicsPipeline` interface for Vulkan
 	*/
 	class VulkanGraphicsPipeline : public GraphicsPipeline<VulkanGraphicsPipeline>
 	{
 	public:
 		//Allow Devices, and only Devices, to create Pipeline objects
-		//Makes sure that CRTP and factory design is not sidestepped
+		//Makes sure that CRTP and factory design are not sidestepped
 		friend class VulkanDevice;
 	private:
-	/**
+		/**
 		Just zeroes all the memory
 		*/
 		VulkanGraphicsPipeline();
@@ -201,20 +188,6 @@ namespace Basilisk
 		
 		VkPipeline m_pipeline; //A Vulkan pipeline object
 	};
-
-
-	/*
-	template<class Impl>
-	class ComputePipeline abstract
-	{
-	public:
-
-		template<DeviceImpl> friend class
-	protected:
-		ComputePipeline() = 0;
-		~ComputePipeline() = 0;
-	};
-	*/
 }
 
 #endif

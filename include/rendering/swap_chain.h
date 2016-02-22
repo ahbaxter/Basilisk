@@ -1,7 +1,7 @@
 /**
 \file   swap_chain.h
 \author Andrew Baxter
-\date February 20, 2016
+\date February 21, 2016
 
 
 
@@ -12,17 +12,21 @@
 
 namespace Basilisk
 {
+	/**
+	Uses CRTP abstraction to represent an API-ambiguous swap chain
+
+	\tparam Impl Sets up the Curiously Recurring Template Pattern
+	*/
 	template<class Impl>
-	class SwapChain
+	class SwapChain abstract
 	{
 	public:
-		inline Impl &GetImplementation()
-		{
+		/**
+		Gets this class's RCTP implementation
+		\return This class's RCTP implementation
+		*/
+		inline Impl &GetImplementation() {
 			return static_cast<Impl&>(*this);
-		}
-
-		inline Result Present() {
-			return GetImplementation().Present();
 		}
 
 		/**
@@ -36,8 +40,7 @@ namespace Basilisk
 		Checks if the target window is fullscreen
 		\return `true` if the appication is fullscreen; `false` otherwise
 		*/
-		inline bool IsFullscreen()
-		{
+		inline bool IsFullscreen() {
 			return m_fullscreen;
 		}
 		/**
@@ -56,12 +59,12 @@ namespace Basilisk
 		}
 
 	protected:
-		SwapChain() = 0;
-		~SwapChain() = 0;
-
 		bool m_vsync, m_fullscreen;
 	};
 
+	/**
+	Implements the `SwapChain` interface for Direct3D 12
+	*/
 	class D3D12SwapChain : public SwapChain<D3D12SwapChain>
 	{
 	public:
@@ -76,6 +79,9 @@ namespace Basilisk
 		uint32_t m_bufferIndex;
 	};
 
+	/**
+	Implements the `SwapChain` interface for Vulkan
+	*/
 	class VulkanSwapChain : public SwapChain<VulkanSwapChain>
 	{
 	public:
@@ -84,6 +90,7 @@ namespace Basilisk
 		VulkanSwapChain();
 		~VulkanSwapChain() = default;
 
+		VkSwapChainKHR m_swapChain;
 	};
 }
 

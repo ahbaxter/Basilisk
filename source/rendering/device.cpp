@@ -1,11 +1,9 @@
 /**
 \file   device.cpp
 \author Andrew Baxter
-\date   February 18, 2016
+\date   February 21, 2016
 
-Defines the behavior of Vulkan and D3D12 backends
-
-\todo Finish. Conflicted on how much I want to delegate to other components.
+Defines the behavior of Vulkan and D3D12 rendering backends
 
 */
 
@@ -19,26 +17,146 @@ using namespace Basilisk;
 #include <comdef.h>
 
 
-D3D12Device::D3D12Device() : 
-	m_device(nullptr) /*, 
-	m_commandQueue(nullptr),
-	m_swapChain(nullptr),
-	m_renderTargetViewHeap(nullptr),
-	m_commandAllocator(nullptr),
-	m_commandList(nullptr),
-	m_pipelineState(nullptr),
-	m_fence(nullptr),
-	m_fenceEvent(nullptr)*/
+D3D12Device::D3D12Device() : m_device(nullptr) {
+}
+
+Result D3D12Instance::Initialize(const std::string &appName)
 {
-	/*m_backBufferRenderTarget[0] = nullptr;
-	m_backBufferRenderTarget[1] = nullptr;*/
+	//Create the DirectX graphics interface factory
+	HRESULT result = CreateDXGIFactory1(__uuidof(IDXGIFactory4), reinterpret_cast<void**>(&m_factory));
+	if (Failed(result))
+	{
+		Basilisk::errorMessage = "Basilisk::D3D12Instance::Initialize() could not create a DirectX Graphics Interface Factory";
+		return Result::APIFailure;
+	}
+
+	return Result::Success;
+}
+
+Result D3D12Instance::EnumeratePhysicalDevices(uint8_t &count, PhysicalDevice *details)
+{
+	if (nullptr == m_factory)
+	{
+		Basilisk::errorMessage = "Basilisk::D3D12Instance::EnumeratePhysicalDevices() was called before it was successfully initialized";
+		return Result::IllegalState;
+	}
+
+	constexpr D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
+	constexpr size_t MAX_DESC_LEN = 128;
+	IDXGIAdapter *adapter;
+	DXGI_ADAPTER_DESC adapterDesc = { 0 };
+	std::vector<PhysicalDevice> devices;
+	HRESULT result;
+	char description[MAX_DESC_LEN] = { 0 };
+
+
+	for (count = 0; ; ++count)
+	{
+		if (DXGI_ERROR_NOT_FOUND == m_factory->EnumAdapters(count, &adapter))
+		{
+			//No more adapters
+			//Don't count this adapter because it doesn't exist
+			count--;
+			break;
+		}
+
+		//Get the video card's details
+		result = adapter->GetDesc(&adapterDesc);
+		if (Failed(result))
+		{
+			Basilisk::errorMessage = "Basilisk::D3D12Instance::EnumeratePhysicalDevices() could not retrieve GPU details";
+			return Result::APIFailure;
+		}
+
+		wcstombs(description, adapterDesc.Description, MAX_DESC_LEN);
+		PhysicalDevice device =
+		{
+			static_cast<uint32_t>(adapterDesc.DedicatedVideoMemory / 1024 / 1024), //adapterDesc stores in bytes, we scale it to MB
+			adapterDesc.VendorId,
+			adapterDesc.DeviceId,
+			std::string(description), 
+			Succeeded(D3D12CreateDevice(adapter, featureLevel, _uuidof(ID3D12Device), nullptr))
+		};
+		devices.push_back(device);
+
+		//Prepare for the next iteration
+		adapter->Release();
+		adapterDesc = { 0 };
+	}
+
+	if (nullptr != details)
+	{
+		std::copy(devices.begin(), devices.end(), details); //Pretty sure this is correct. Will test.
+	}
+
+	return Result::Success;
+	
 }
 
 
+
+
+
+Result VulkanInstance::Initialize(const std::string &appName)
+{
+	//Should I let them specify application version as well?
+	VkApplicationInfo appInfo =
+	{
+		VK_STRUCTURE_TYPE_APPLICATION_INFO,
+		nullptr,         //Must be NULL
+		appName.c_str(), //Application name
+		1,               //Application version
+		"Basilisk",      //Engine name
+		1,               //Engine version
+		1                //API version
+	};
+
+	const char *extensionNames[] = {
+		"VK_KHR_surface",
+		"VK_KHR_win32_surface"
+	};
+
+	VkInstanceCreateInfo instanceInfo = 
+	{
+		VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+		nullptr,         //Must be NULL
+		0,               //No flags
+		&appInfo,        //Let the GPU know who we are
+		0,               //Not using layers
+		nullptr,         //Not using layers
+		sizeof(extensionNames)/sizeof(extensionNames[0]), //Number of extensions
+		extensionNames   //Which extensions we're using
+	};
+
+	//           Rely on automatic memory allocation ----v
+	VkResult result = vkCreateInstance(&instanceInfo, nullptr, &m_instance);
+	if (Failed(result))
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::Initialize() could not create a Vulkan Instance";
+		return Result::APIFailure;
+	}
+
+	return Result::Success;
+}
+
+
+template<> Result Basilisk::D3D12Device::CreatePipeline<D3D12GraphicsPipeline>(D3D12GraphicsPipeline *out)
+{
+	//We don't actually create the D3D12 object here
+	//We just give it a device handle so it can create itself later
+	//At the time of writing, it gets created when `Compile()` is called
+
+	*out = D3D12GraphicsPipeline();
+	out->m_device = m_device;
+
+	return Result::Success;
+}
+
+/*
 Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool fullscreen, bool vsync)
 {
-	D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
-	HRESULT result = S_OK;
+	D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0; //We can actually get away with using the D3D12 API on GPUs that only support D3D11
+	HRESULT result;
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc;
 	IDXGIFactory4 *factory;
 	IDXGIAdapter *adapter;
@@ -61,10 +179,10 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not create DirectX Graphics Interface Factory";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
-	//Loop through all adapters until we find one that supports Direc3D 12
+	//Loop through all adapters until we find one that supports Direct3D 12
 	for (uint32_t adapterIndex = 0; ; ++adapterIndex)
 	{
 		if (DXGI_ERROR_NOT_FOUND == factory->EnumAdapters(adapterIndex, &adapter))
@@ -78,7 +196,7 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 	if (result != S_OK) //Ran out of adapters
 	{
 		Basilisk::errorMessage = "Could not find a video card which supports the Direct3D 12 runtime";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Create the Direct3D device
@@ -86,7 +204,7 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Unexpected error creating the Direct3D 12 device";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//\todo Are multi-monitor displays typically supported?
@@ -95,7 +213,7 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not locate the primary monitor";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//List supported display modes matching DXGI_FORMAT_R8G8B8A8_UNORM
@@ -103,7 +221,7 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not enumerate primary monitor's display modes";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Create a list holding all the display modes for this monitor/gpu combination
@@ -111,7 +229,7 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 	if (!displayModeList)
 	{
 		Basilisk::errorMessage = "Ran out of memory while listing primary monitor's display modes";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Fill the list of display modes
@@ -119,21 +237,21 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not retrieve primary monitor's display modes";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 	/* \todo Store all resolutions, so it can be changed quickly at runtime
 	for (i = 0; i < numModes; ++i)
 	{
 		displayModeList[i].Height
 		displayModeList[i].Width
-	}*/
+	}* /
 
 	//Get the video card description
 	result = adapter->GetDesc(&adapterDesc);
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not retrieve video card description";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Store the video card's memory (in megabytes)
@@ -143,7 +261,7 @@ Result D3D12Device::Initialize(HWND window, Bounds2D<uint16_t> resolution, bool 
 	if (error != 0)
 	{
 		Basilisk::errorMessage = "Could not store video card name";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Clean up
@@ -196,16 +314,11 @@ void D3D12Device::Release()
 	//Release the command queue
 	safeRelease(m_commandQueue);
 	
-	*/
+	* /
 	//Release the device
 	safeRelease(m_device);
 }
-
-template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPipeline>(D3D12GraphicsPipeline *out)
-{
-	out = new D3D12GraphicsPipeline;
-	return out->Initialize()
-}
+*/
 
 /*
 
@@ -219,7 +332,7 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not create Direct3D 12 command queue";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Describe the swap chain
@@ -253,7 +366,7 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not create swap chain";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Now shoehorn the swap chain into a IDXGISwapChain3 structure
@@ -261,7 +374,7 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not upgrade the swap chain to version 3";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//More housekeeping
@@ -281,7 +394,7 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not create back buffers as render target views";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Get a handle to the starting memory location in the render target view heap to identify where the render target views will be located for the two back buffers
@@ -294,7 +407,7 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not retrieve first back buffer from the swap chain";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 	//Create a render target view for the first back buffer
 	m_device->CreateRenderTargetView(m_backBufferRenderTarget[0], nullptr, renderTargetViewHandle);
@@ -306,7 +419,7 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not retrieve second back buffer from the swap chain";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 	//Create a render target view for the second back buffer
 	m_device->CreateRenderTargetView(m_backBufferRenderTarget[1], nullptr, renderTargetViewHandle);
@@ -319,21 +432,21 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not create command allocator";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 	//Create a command list
 	result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&m_commandList);
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not create command list";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 	//Close the command list during initialization as it is created in a recording state
 	result = m_commandList->Close();
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not close command list";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 
 	//Create a fence for GPU synchronization
@@ -341,14 +454,14 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 	if (result != S_OK)
 	{
 		Basilisk::errorMessage = "Could not create fence";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 	//Create an event object for the fence
 	m_fenceEvent = CreateEventEx(NULL, FALSE, FALSE, EVENT_ALL_ACCESS);
 	if (m_fenceEvent == nullptr)
 	{
 		Basilisk::errorMessage = "Could not create event object for fence";
-		return Result::Failure;
+		return Result::APIFailure;
 	}
 	//Set a starting value for the fence
 	m_fenceValue = 1; 
@@ -484,14 +597,3 @@ unsigned long long D3D12Device::present()
 	return m_fenceValue++;
 }
 */
-
-void D3D12Device::SetVsyncEnabled(bool enable)
-{
-	m_vsync = enable;
-}
-
-void D3D12Device::SetFullscreenEnabled(bool fullscreen)
-{
-	//m_swapChain->SetFullscreenState(fullscreen, nullptr);
-	m_fullscreen = fullscreen;
-}

@@ -26,12 +26,31 @@ Houses all components of the game engine
 */
 namespace Basilisk
 {
+	//Check Vulkan error codes
+
+	inline bool Succeeded(VkResult val) {
+		return (val >= 0);
+	}
+	inline bool Failed(VkResult val) {
+		return (val < 0);
+	}
+
+	//Check Direct3D error codes
+
+	inline bool Succeeded(HRESULT val) {
+		return SUCCEEDED(val);
+	}
+	inline bool Failed(HRESULT val) {
+		return FAILED(val);
+	}
+
+	//Alternative representation for VkExtent structs
+
 	template<typename T>
 	struct Bounds2D
 	{
 		T width, height;
 	};
-
 	template<typename T>
 	struct Bounds3D
 	{
