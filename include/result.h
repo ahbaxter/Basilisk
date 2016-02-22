@@ -5,6 +5,8 @@
 
 Defines a series of all-purpose error (or success) codes to be used by components of the game engine
 
+\todo Properly capitalize APIError to ApiError
+
 */
 
 #ifndef BASILISK_RESULT_H
@@ -26,7 +28,7 @@ namespace Basilisk
 	*/
 	enum class Result : int8_t
 	{
-		APIFailure = -11,
+		ApiError = -11,
 		IllegalArgument,
 		IllegalState,
 		OutOfMemory,

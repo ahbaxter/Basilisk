@@ -3,12 +3,14 @@
 \author Andrew Baxter
 \date February 21, 2016
 
-
+Implements swap chains in Vulkan and Direct3D 12
 
 */
 
 #ifndef BASILISK_SWAP_CHAIN_H
 #define BASILISK_SWAP_CHAIN_H
+
+#include "common.h"
 
 namespace Basilisk
 {
@@ -90,7 +92,7 @@ namespace Basilisk
 		VulkanSwapChain();
 		~VulkanSwapChain() = default;
 
-		VkSwapChainKHR m_swapChain;
+		VkSwapchainKHR m_swapChain;
 	};
 }
 

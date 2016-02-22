@@ -176,7 +176,7 @@ namespace Basilisk
 		uint32_t vendorId;
 		uint32_t deviceId;
 		std::string name;
-		bool supportsAPI;
+		bool supportsApi;
 	};
 
 
@@ -214,7 +214,7 @@ namespace Basilisk
 		\param[out] count Where to store the number of connected GPUs
 		\param[out] details Where to store the details of each connected GPU
 		*/
-		inline Result EnumeratePhysicalDevices(uint8_t &count, PhysicalDevice *details) {
+		inline Result EnumeratePhysicalDevices(uint32_t &count, PhysicalDevice details[]) {
 			return GetImplementation().EnumeratePhysicalDevices(count, details);
 		}
 
@@ -225,8 +225,8 @@ namespace Basilisk
 		\param[out] out Where to store the resultant device
 		\return Details about potential failure
 		*/
-		template<class DeviceType>pppp;
-		inline Result CreateDevice(uint8_t gpuIndex, DeviceType *out) {
+		template<class DeviceType>
+		inline Result CreateDevice(uint32_t gpuIndex, DeviceType *out) {
 			return GetImplementation().CreateDevice(gpuIndex, out);
 		}
 	};
@@ -237,14 +237,26 @@ namespace Basilisk
 	class D3D12Instance : Instance<D3D12Instance>
 	{
 	public:
+		D3D12Instance();
+		~D3D12Instance() = default;
+
 		/**
 		Boots up D3D12
 		\param[in] appName Not used in D3D12
 		*/
 		Result Initialize(const std::string &appName = "");
 		
-		Result EnumeratePhysicalDevices(uint8_t &count, PhysicalDevice *details);
+		/**
+		Counts and/or lists the number of connected GPUs
+		\param[out] count Where to store the number of connected GPUs
+		\param[out] details Where to store the details of each connected GPU
+		*/
+		Result EnumeratePhysicalDevices(uint32_t &count, PhysicalDevice *details);
 
+		template<class DeviceType>
+		Result CreateDevice(uint32_t gpuIndex, DeviceType *out);
+		
+		template<> Result CreateDevice<D3D12Device>(uint32_t gpuIndex, D3D12Device *out);
 	private:
 		IDXGIFactory4 *m_factory;
 	};
@@ -255,10 +267,12 @@ namespace Basilisk
 	class VulkanInstance : Instance<VulkanInstance>
 	{
 	public:
+		VulkanInstance();
+		~VulkanInstance() = default;
+
 		/**
 		Boots up Vulkan
 		\param[in] appName Lets GPU drivers know who you are
-		\todo look into Vulkan extensions
 		*/
 		Result Initialize(const std::string &appName = "");
 
@@ -267,9 +281,19 @@ namespace Basilisk
 		\param[out] count Where to store the number of connected GPUs
 		\param[out] details Where to store the details of each connected GPU
 		*/
-		Result EnumeratePhysicalDevices(uint8_t &count, PhysicalDevice *details);
+		Result EnumeratePhysicalDevices(uint32_t &count, PhysicalDevice *details);
+
+		template<class DeviceType>
+		Result CreateDevice(uint32_t gpuIndex, DeviceType *out);
+
+		template<> Result CreateDevice<D3D12Device>(uint32_t gpuIndex, D3D12Device *out);
 	private:
 		VkInstance m_instance;
+		static constexpr uint32_t layerCount = 0;
+		static const char* const* layerNames;
+		
+		static constexpr uint32_t extensionCount = 3;
+		static const char* extensionNames[extensionCount];
 	};
 }
 

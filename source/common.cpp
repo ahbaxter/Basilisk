@@ -11,7 +11,7 @@ Links to Direct3D 12 and Vulkan libraries
 
 
 #ifdef ENVIRONMENT64
-#pramga comment(lib, "Bin/vulkan-1.lib")
+#pragma comment(lib, "Bin/vulkan-1.lib")
 #elif ENVIRONMENT32
 #pragma comment(lib, "Bin32/vulkan-1.lib")
 #endif
