@@ -1,7 +1,7 @@
 /**
 \file   common.h
 \author Andrew Baxter
-\date   February 21, 2015
+\date   February 23, 2015
 
 Includes universally-required headers
 
@@ -61,6 +61,42 @@ namespace Basilisk
 	{
 		T width, height, depth;
 	};
+
+
+	//For use with generic objects
+	template<typename T>
+	void SafeDelete(T *&obj)
+	{
+		if (nullptr != obj)
+		{
+			delete obj;
+			obj = nullptr;
+		}
+	}
+	
+	//For use with Basilisk objects
+	template<typename T>
+	void SafeRelease(T *&obj)
+	{
+		if (nullptr != obj)
+		{
+			obj->Release();
+			delete obj;
+			obj = nullptr;
+		}
+	}
+
+	//For use with Direct3D 12 objects
+	//All the memory allocation is under the hood
+	template<typename T>
+	void SafeReleaseCom(T *&obj)
+	{
+		if (nullptr != obj)
+		{
+			obj->Release();
+			obj = nullptr;
+		}
+	}
 }
 
 #endif

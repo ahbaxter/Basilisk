@@ -37,12 +37,6 @@
     <Filter Include="Core">
       <UniqueIdentifier>{6fd1c088-a2bc-422a-85ce-b0265fec45c9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Rendering\2D">
-      <UniqueIdentifier>{17809a7d-0c37-4c84-9189-1186163540a6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\3D">
-      <UniqueIdentifier>{dbdd8418-b234-4957-8984-d9b5d7430e99}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\profiling.h">
@@ -73,6 +67,9 @@
       <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="include\rendering\swap_chain.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\image.h">
       <Filter>Rendering</Filter>
     </ClInclude>
   </ItemGroup>
