@@ -115,6 +115,48 @@ Result D3D12Instance::EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice *
 				}
 				adapter->Release();
 				adapter = nullptr;
+<<<<<<< HEAD
+			}
+		}
+		else //Caller knows the number of GPUs and wants details
+		{
+			for (uint32_t i = 0; i < (*count); ++i)
+			{
+				if (DXGI_ERROR_NOT_FOUND == m_factory->EnumAdapters(i, &adapter))
+				{
+					//No more adapters
+					//Don't count this adapter because it doesn't exist
+					(*count) = i - 1;
+					break;
+				}
+				else
+				{
+					//Get the video card's details
+					result = adapter->GetDesc(&adapterDesc);
+					if (Failed(result))
+					{
+						Basilisk::errorMessage = "Basilisk::D3D12Instance::EnumeratePhysicalDevices() could not retrieve GPU details";
+						return Result::ApiError;
+					}
+
+					size_t numCharsMoved; //Really don't care, but it'll crash otherwise
+					wcstombs_s(&numCharsMoved, description, adapterDesc.Description, MAX_DESC_LEN);
+
+					details[i].memory = static_cast<uint32_t>(adapterDesc.DedicatedVideoMemory / 1024 / 1024); //adapterDesc stores in bytes, we scale it to MB
+					details[i].vendorId = adapterDesc.VendorId; //Store the GPU's manufacturer
+					details[i].deviceId = adapterDesc.DeviceId; //Store the GPU's model
+					details[i].name = description;              //Store the GPU's name
+					details[i].supportsApi = Succeeded(D3D12CreateDevice(adapter, featureLevel, _uuidof(ID3D12Device), nullptr)); //Check if this GPU supports Direct3D 12
+
+					//Prepare for the next iteration
+					adapter->Release();
+					adapter = nullptr;
+					adapterDesc = { 0 };
+					memset(description, 0, MAX_DESC_LEN);
+				}
+			}
+		}
+=======
 			}
 		}
 		else //Caller knows the number of GPUs and wants details
@@ -279,7 +321,7 @@ void VulkanDevice::Release() {
 	}
 }
 
-template<> Result D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPipeline>(D3D12GraphicsPipeline *&out)
+template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPipeline>(D3D12GraphicsPipeline *&out)
 {
 	//We don't actually create the D3D12 object here
 	//We just give it a device handle so it can create itself later
