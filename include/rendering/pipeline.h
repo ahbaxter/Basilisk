@@ -210,7 +210,7 @@ namespace Basilisk
 	
 	private:
 		
-	}
+	};
 	
 
 	/**
