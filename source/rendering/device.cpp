@@ -155,10 +155,9 @@ Result D3D12Instance::EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice *
 				}
 			}
 		}
-
-
-		return Result::Success;
 	}
+
+	return Result::Success;
 }
 
 Result VulkanInstance::EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice *details)
@@ -188,44 +187,48 @@ Result VulkanInstance::EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice 
 		else //Caller knows the number of GPUs and wants details
 		{
 			const uint32_t origCount = (*count);
-			VkPhysicalDevice *devices = new VkPhysicalDevice[origCount];
+			VkPhysicalDevice *devices = new VkPhysicalDevice[origCount]();
 			if (Failed(vkEnumeratePhysicalDevices(m_instance, count, devices)))
 			{
+				delete[] devices;
 				Basilisk::errorMessage = "Basilisk::VulkanInstance::EnumeratePhysicalDevices()'s call to vkEnumeratePhysicalDevices() failed";
 				return Result::ApiError;
 			}
-
-			VkDeviceCreateInfo info = {
-				VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-				nullptr,        //Reserved
-				0,              //Flags
-				0,              //Queue count
-				nullptr,        //Queue properties
-				layerCount,     //Layer count
-				layerNames,     //Layer types
-				extensionCount, //Extension count
-				extensionNames, //Extension names
-				nullptr         //Not enabling any device features
-			};
-
-			for (uint32_t i = 0; i < origCount; ++i)
+			else //Enumerated devices successfully
 			{
-				VkPhysicalDeviceProperties props = { 0 };
-				vkGetPhysicalDeviceProperties(devices[i], &props);
+				VkDeviceCreateInfo info = {
+					VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+					nullptr,        //Reserved
+					0,              //Flags
+					0,              //Queue count
+					nullptr,        //Queue properties
+					layerCount,     //Layer count
+					layerNames,     //Layer types
+					extensionCount, //Extension count
+					extensionNames, //Extension names
+					nullptr         //Not enabling any device features
+				};
 
-				details[i].memory = props.limits.maxMemoryAllocationCount / 1024 / 1024;  //Store the GPU's memory (in MB)
-				details[i].vendorId = props.vendorID;    //Store the manufacturer
-				details[i].deviceId = props.deviceID;    //Store the device model
-				details[i].name = props.deviceName;      //Store the device name
-				details[i].supportsApi = Succeeded(vkCreateDevice(devices[i], &info, nullptr, nullptr)); //Check if this GPU supports Vulkan
+				for (uint32_t i = 0; i < origCount; ++i)
+				{
+					if (nullptr != devices[i])
+					{
+						VkPhysicalDeviceProperties props = { 0 };
+						vkGetPhysicalDeviceProperties(devices[i], &props);
+
+						details[i].memory = props.limits.maxMemoryAllocationCount / 1024 / 1024;  //Store the GPU's memory (in MB)
+						details[i].vendorId = props.vendorID;    //Store the manufacturer
+						details[i].deviceId = props.deviceID;    //Store the device model
+						details[i].name = props.deviceName;      //Store the device name
+						details[i].supportsApi = Succeeded(vkCreateDevice(devices[i], &info, nullptr, nullptr)); //Check if this GPU supports Vulkan
+					}
+				}
+				delete[] devices;
 			}
-
-			delete[] devices;
 		}
-
-
-		return Result::Success;
 	}
+	
+	return Result::Success;
 }
 
 template<> Result D3D12Instance::CreateDevice<D3D12Device>(uint32_t gpuIndex, D3D12Device *&out)
@@ -259,6 +262,46 @@ template<> Result D3D12Instance::CreateDevice<D3D12Device>(uint32_t gpuIndex, D3
 	{
 		return Result::Success;
 	}
+}
+
+template<> Result VulkanInstance::CreateDevice<VulkanDevice>(uint32_t gpuIndex, VulkanDevice *&out)
+{
+	uint32_t count = gpuIndex + 1;
+	VkPhysicalDevice *devices = new VkPhysicalDevice[count]();
+	if (Failed(vkEnumeratePhysicalDevices(m_instance, &count, devices)))
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice()'s call to vkEnumeratePhysicalDevices() failed";
+		return Result::ApiError;
+	}
+	else //Enumerated devices successfully
+	{
+		VkDeviceCreateInfo info = {
+			VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+			nullptr,        //Reserved
+			0,              //Flags
+			0,              //Queue count
+			nullptr,        //Queue properties
+			layerCount,     //Layer count
+			layerNames,     //Layer types
+			extensionCount, //Extension count
+			extensionNames, //Extension names
+			nullptr         //Not enabling any device features
+		};
+		
+		out = new VulkanDevice();
+		out->m_gpu = devices[gpuIndex];
+		if (Failed(vkCreateDevice(devices[gpuIndex], &info, nullptr, out->m_device);
+		{
+			SafeRelease(out);
+			delete[] devices;
+			Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice()'s call to vkCreateDevice() failed";
+			return Result::ApiError;
+		}
+		
+		delete[] devices;
+	}
+	
+	return Result::Success;
 }
 
 D3D12Device::D3D12Device() : m_device(nullptr) {

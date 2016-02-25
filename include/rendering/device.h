@@ -182,6 +182,7 @@ namespace Basilisk
 		~VulkanDevice() = default; //All handled in the `Release()` function
 
 		VkDevice m_device;
+		VkPhysicalDevice m_gpu;
 	};
 
 
