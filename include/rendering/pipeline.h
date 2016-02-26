@@ -204,17 +204,23 @@ namespace Basilisk
 		All = 0x7FFFFFFF
 	};
 	
-	struct PipelineLayout
+	template<class Impl>
+	class Shader abstract
 	{
 	public:
-	
-	private:
-		
+		/**
+		Gets this class's CRTP implementation
+		\return This class's CRTP implementation
+		*/
+		inline const Impl &GetImplementation() {
+			return static_cast<Impl&>(*this);
+		}
+
 	};
 	
 
 	/**
-	Represents an API-ambiguous graphics pipeline
+	Uses CRTP to represent an ambiguous graphics pipeline
 
 	\tparam Impl Sets up the Curiously Recurring Template Pattern
 
@@ -226,8 +232,8 @@ namespace Basilisk
 	{
 	public:
 		/**
-		Gets this class's RCTP implementation
-		\return This class's RCTP implementation
+		Gets this class's CRTP implementation
+		\return This class's CRTP implementation
 		*/
 		inline const Impl &GetImplementation() {
 			return static_cast<Impl&>(*this);

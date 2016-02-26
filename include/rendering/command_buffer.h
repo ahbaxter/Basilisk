@@ -19,8 +19,8 @@ namespace Basilisk
 	{
 	public:
 		/**
-		Gets this class's RCTP implementation
-		\return This class's RCTP implementation
+		Gets this class's CRTP implementation
+		\return This class's CRTP implementation
 		*/
 		inline const Impl &GetImplementation()
 		{

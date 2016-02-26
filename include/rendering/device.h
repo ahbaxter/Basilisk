@@ -6,6 +6,7 @@
 The virtual interface with the selected graphics API
 
 \todo Don't shirk off creating the pipeline object
+\todo Change the way `Device::EnumeratePhysicalDevices` works
 
 */
 
@@ -20,7 +21,7 @@ The virtual interface with the selected graphics API
 namespace Basilisk
 {
 	/**
-	Uses CRTP abstraction to represent an API-ambiguous device
+	Uses CRTP abstraction to represent an ambiguous device
 
 	\tparam Impl Sets up the Curiously Recurring Template Pattern
 	*/
@@ -29,8 +30,8 @@ namespace Basilisk
 	{
 	public:
 		/**
-		Gets this class's RCTP implementation
-		\return This class's RCTP implementation
+		Gets this class's CRTP implementation
+		\return This class's CRTP implementation
 		*/
 		inline const Impl &GetImplementation() {
 			return static_cast<Impl&>(*this);
@@ -58,18 +59,21 @@ namespace Basilisk
 		/**
 		Creates a swap chain
 		\warning After creation, Basilisk is not responsible for memory management of the resultant object
+		\warning May fall back to fewer buffers than requested, depending on hardware capabilities
 
 		\param[out] out Where to store the resulting swap chain
+		\param[in] connection The platform-specific connection to the process
 		\param[in] window The window to render to
 		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered)
 		\param[in] resolution The resolution to use. Defaults to native resolution
+		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off)
 		\tparam Specifies which API to create the swap chain for
 
 		\todo Expand to non-Windows sytems
 		*/
 		template<class SwapChainType>
-		inline Result CreateSwapChain(SwapChainType *&out, HWND window, uint8_t numBuffers = 2, Bounds2D<uint16_t> resolution = { 0, 0 }, uint8_t antiAliasing = 1) {
-			return GetImplementation().CreateSwapChain(out, window, numBuffers, resolution, antiAliasing);
+		inline Result CreateSwapChain(SwapChainType *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, uint8_t numBuffers = 2, uint8_t numSamples = 1) {
+			return GetImplementation().CreateSwapChain(out, connection, window, resolution, numBuffers, numSamples);
 		}
 	};
 
@@ -100,18 +104,25 @@ namespace Basilisk
 		Gives an error message when idiots try to create a Vulkan swap chain with a D3D12 device
 		\tparam SwapChainType Anything that isn't `D3D12SwapChain` will resolve here
 		*/
-		template<class SwapChainType> Result CreateSwapChain(SwapChainType *&out) {
+		template<class SwapChainType> Result CreateSwapChain(SwapChainType *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, uint8_t numBuffers = 2, uint8_t numSamples = 1) {
 			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type.");
 		}
 		/**
 		\brief Partial specialization of `Device::CreateSwapChain`, working only with compatible API objects
 		Really, this can be done without a device in D3D12, but Vulkan needs it so I'll just be consistent
-		\warning After creation, Basilisk is not responsible for memory management of the resultant object
+		\warning May fall back to fewer buffers than requested, depending on hardware capabilities
 
-		\param[out] out A pointer to an empty swap chain object
-		\return Details about potential failure
+		\param[out] out Where to store the resulting swap chain
+		\param[in] connection The platform-specific connection to the process
+		\param[in] window The window to render to
+		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered)
+		\param[in] resolution The resolution to use. Defaults to native resolution
+		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off)
+		\tparam Specifies which API to create the swap chain for
+
+		\todo Expand to non-Windows sytems
 		*/
-		template<> Result CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out);
+		template<> Result CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples);
 
 
 		/**
@@ -124,11 +135,12 @@ namespace Basilisk
 		~D3D12Device() = default; //All handled in the `Release()` function
 
 		ID3D12Device *m_device;
-
-		/*
 		ID3D12CommandQueue *m_commandQueue;
-		ID3D12CommandAllocator *m_commandAllocator; //Remove from device class?
-		ID3D12GraphicsCommandList *m_commandList; //Remove from device class?
+		ID3D12CommandAllocator *m_commandAllocator;
+		IDXGIFactory4 *m_factory;
+		
+		/* Remove from this class:
+		ID3D12GraphicsCommandList *m_commandList;
 		ID3D12Fence *m_fence;
 		HANDLE m_fenceEvent;
 		uint64_t m_fenceValue;
@@ -162,31 +174,50 @@ namespace Basilisk
 		Gives an error message when idiots try to create a D3D12 swap chain with a Vulkan device
 		\tparam SwapChainType Anything that isn't `VulkanSwapChain` will resolve here
 		*/
-		template<class SwapChainType> Result CreateSwapChain(SwapChainType *&out) {
+		template<class SwapChainType> Result CreateSwapChain(SwapChainType *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, uint8_t numBuffers = 2, uint8_t numSamples = 1) {
 			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type.");
 		}
 		/**
-		\brief Partial specialization of `Device::CreateSwapChain`, working only with compatible API objects
+		Partial specialization of `Device::CreateSwapChain`, working only with compatible API objects
+		
+		\warning May fall back to fewer buffers than requested, depending on hardware capabilities
 
-		\param[out] out A pointer to an empty swap chain object
-		\return Details about potential failure
+		\param[out] out Where to store the resulting swap chain
+		\param[in] connection The platform-specific connection to the process
+		\param[in] window The window to render to
+		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered)
+		\param[in] resolution The resolution to use. Defaults to native resolution
+		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off)
+		\tparam Specifies which API to create the swap chain for
+
+		\todo Expand to non-Windows sytems
 		*/
-		template<> Result CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out);
+		template<> Result CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples);
 
 		/**
 		Cleans up after itself
 		*/
 		void Release();
 	private:
+		struct Queue
+		{
+			VkQueue queue;
+			VkQueueFamilyProperties props;
+		};
+
 		VulkanDevice();
 		~VulkanDevice() = default; //All handled in the `Release()` function
 
 		VkDevice m_device;
-		VkPhysicalDevice m_gpu;
+		std::vector<Queue> m_queues;
+
+		VkPhysicalDevice m_gpu; //Needed to create swap chains
+		VkInstance m_instance; //Needed to create swap chains
 	};
 
 
 	/**
+	Stores information about a single GPU
 
 	\todo Can Direct3D 12 check what type of device it is (discrete, integrated, etc)?
 	*/
@@ -202,7 +233,7 @@ namespace Basilisk
 
 
 	/**
-	Uses CRTP abstraction to represent an API-ambiguous instance
+	Uses CRTP abstraction to represent an ambiguous API instance
 
 	\tparam Impl Sets up the Curiously Recurring Template Pattern
 	*/
@@ -211,8 +242,8 @@ namespace Basilisk
 	{
 	public:
 		/**
-		Gets this class's RCTP implementation
-		\return This class's RCTP implementation
+		Gets this class's CRTP implementation
+		\return This class's CRTP implementation
 		*/
 		inline const Impl &GetImplementation()
 		{
@@ -335,7 +366,7 @@ namespace Basilisk
 		\param[out] out Where to store the resultant device
 		\return Details about potential failure
 		*/
-		template<> Result CreateDevice<D3D12Device>(uint32_t gpuIndex, D3D12Device *&out);
+		template<> Result CreateDevice<VulkanDevice>(uint32_t gpuIndex, VulkanDevice *&out);
 	private:
 		VkInstance m_instance;
 		static constexpr uint32_t layerCount = 0;

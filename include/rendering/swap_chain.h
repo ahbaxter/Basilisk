@@ -15,7 +15,7 @@ Implements swap chains in Vulkan and Direct3D 12
 namespace Basilisk
 {
 	/**
-	Uses CRTP abstraction to represent an API-ambiguous swap chain
+	Uses CRTP abstraction to represent an ambiguous swap chain
 
 	\tparam Impl Sets up the Curiously Recurring Template Pattern
 	*/
@@ -24,8 +24,8 @@ namespace Basilisk
 	{
 	public:
 		/**
-		Gets this class's RCTP implementation
-		\return This class's RCTP implementation
+		Gets this class's CRTP implementation
+		\return This class's CRTP implementation
 		*/
 		inline Impl &GetImplementation() {
 			return static_cast<Impl&>(*this);
@@ -89,10 +89,20 @@ namespace Basilisk
 	public:
 		friend class VulkanDevice;
 	private:
+		struct RenderTarget
+		{
+			VkImage image;
+			VkImageView view;
+		};
+
 		VulkanSwapChain();
 		~VulkanSwapChain() = default;
 
 		VkSwapchainKHR m_swapChain;
+		VkSurfaceKHR m_windowSurface;
+		VkFormat m_format;
+		RenderTarget *m_targets;
+		uint32_t m_numTargets;
 	};
 }
 

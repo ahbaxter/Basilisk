@@ -11,8 +11,8 @@ Defines the behavior of Vulkan and D3D12 rendering backends
 
 using namespace Basilisk;
 
-#include <vector>
-#include <chrono>
+
+#include <memory> //Used for smart pointers
 
 #include <comdef.h>
 
@@ -35,8 +35,7 @@ VulkanInstance::VulkanInstance() : m_instance(nullptr) {
 Result D3D12Instance::Initialize(const std::string &appName)
 {
 	//Create the DirectX graphics interface factory
-	HRESULT result = CreateDXGIFactory1(__uuidof(IDXGIFactory4), reinterpret_cast<void**>(&m_factory));
-	if (Failed(result))
+	if (Failed( CreateDXGIFactory1(__uuidof(IDXGIFactory4), reinterpret_cast<void**>(&m_factory)) ))
 	{
 		Basilisk::errorMessage = "Basilisk::D3D12Instance::Initialize() could not create a DirectX Graphics Interface Factory";
 		return Result::ApiError;
@@ -89,47 +88,34 @@ Result D3D12Instance::EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice *
 		Basilisk::errorMessage = "Basilisk::D3D12Instance::EnumeratePhysicalDevices() was called before the instance was successfully initialized";
 		return Result::IllegalState;
 	}
+	else if (nullptr == count) //Caller messed up
+	{
+		Basilisk::errorMessage = "Basilisk::D3D12Instance::EnumeratePhysicalDevices()::count cannot be a null pointer";
+		return Result::IllegalArgument;
+	}
 	else //The instance is all set up
 	{
 		constexpr size_t MAX_DESC_LEN = 128;
-		IDXGIAdapter *adapter;
-		DXGI_ADAPTER_DESC adapterDesc = { 0 };
-		HRESULT result;
+		IDXGIAdapter *adapter = nullptr;
+		DXGI_ADAPTER_DESC adapterDesc;
+		HRESULT result = ERROR_SUCCESS;
 		char description[MAX_DESC_LEN] = { 0 };
 
-		if (nullptr == count) //Caller messed up
+		if (0 == (*count) || nullptr == details) //Caller just wants number of devices
 		{
-			Basilisk::errorMessage = "Basilisk::D3D12Instance::EnumeratePhysicalDevices()::count cannot be a null pointer";
-			return Result::IllegalArgument;
-		}
-		else if (0 == (*count) || nullptr == details) //Caller just wants number of devices
-		{
-			for (uint32_t i = 0; ; ++i)
+			uint32_t gpuIndex = 0;
+			for ( ; DXGI_ERROR_NOT_FOUND != m_factory->EnumAdapters(gpuIndex, &adapter); ++gpuIndex)
 			{
-				if (DXGI_ERROR_NOT_FOUND == m_factory->EnumAdapters(i, &adapter))
-				{
-					//No more adapters
-					//Don't count this adapter because it doesn't exist
-					(*count) = i - 1;
-					break;
-				}
 				adapter->Release();
 				adapter = nullptr;
 			}
+			(*count) = gpuIndex - 1;
 		}
 		else //Caller knows the number of GPUs and wants details
 		{
-			for (uint32_t i = 0; i < (*count); ++i)
+			uint32_t gpuIndex = 0;
+			for ( ;	gpuIndex < (*count) && DXGI_ERROR_NOT_FOUND != m_factory->EnumAdapters(gpuIndex, &adapter); ++gpuIndex)
 			{
-				if (DXGI_ERROR_NOT_FOUND == m_factory->EnumAdapters(i, &adapter))
-				{
-					//No more adapters
-					//Don't count this adapter because it doesn't exist
-					(*count) = i - 1;
-					break;
-				}
-				else
-				{
 					//Get the video card's details
 					result = adapter->GetDesc(&adapterDesc);
 					if (Failed(result))
@@ -141,19 +127,18 @@ Result D3D12Instance::EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice *
 					size_t numCharsMoved; //Really don't care, but it'll crash otherwise
 					wcstombs_s(&numCharsMoved, description, adapterDesc.Description, MAX_DESC_LEN);
 
-					details[i].memory = static_cast<uint32_t>(adapterDesc.DedicatedVideoMemory / 1024 / 1024); //adapterDesc stores in bytes, we scale it to MB
-					details[i].vendorId = adapterDesc.VendorId; //Store the GPU's manufacturer
-					details[i].deviceId = adapterDesc.DeviceId; //Store the GPU's model
-					details[i].name = description;              //Store the GPU's name
-					details[i].supportsApi = Succeeded(D3D12CreateDevice(adapter, featureLevel, _uuidof(ID3D12Device), nullptr)); //Check if this GPU supports Direct3D 12
+					details[gpuIndex].memory = static_cast<uint32_t>(adapterDesc.DedicatedVideoMemory / 1024 / 1024); //adapterDesc stores in bytes, we scale it to MB
+					details[gpuIndex].vendorId = adapterDesc.VendorId; //Store the GPU's manufacturer
+					details[gpuIndex].deviceId = adapterDesc.DeviceId; //Store the GPU's model
+					details[gpuIndex].name = description;              //Store the GPU's name
+					details[gpuIndex].supportsApi = Succeeded(D3D12CreateDevice(adapter, featureLevel, _uuidof(ID3D12Device), nullptr)); //Check if this GPU supports Direct3D 12
 
 					//Prepare for the next iteration
 					adapter->Release();
 					adapter = nullptr;
-					adapterDesc = { 0 };
 					memset(description, 0, MAX_DESC_LEN);
-				}
 			}
+			(*count) = gpuIndex - 1;
 		}
 	}
 
@@ -167,30 +152,29 @@ Result VulkanInstance::EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice 
 		Basilisk::errorMessage = "Basilisk::VulkanInstance::EnumeratePhysicalDevices() was called before the instance was successfully initialized";
 		return Result::IllegalState;
 	}
+	else if (nullptr == count) //Caller messed up
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::EnumeratePhysicalDevices()::count cannot be a null pointer";
+		return Result::IllegalArgument;
+	}
 	else //The instance is all set up
 	{
-		if (nullptr == count) //Caller messed up
+		if (0 == (*count) || nullptr == details) //Caller just wants the number of GPUs
 		{
-			Basilisk::errorMessage = "Basilisk::VulkanInstance::EnumeratePhysicalDevices()::count cannot be a null pointer";
-			return Result::IllegalArgument;
-		}
-		else if (0 == (*count) || nullptr == details) //Caller just wants the number of GPUs
-		{
-			if (Succeeded(vkEnumeratePhysicalDevices(m_instance, count, nullptr)))
-				return Result::Success;
-			else
+			if (Failed( vkEnumeratePhysicalDevices(m_instance, count, nullptr) ))
 			{
 				Basilisk::errorMessage = "Basilisk::VulkanInstance::EnumeratePhysicalDevices()'s call to vkEnumeratePhysicalDevices() failed";
 				return Result::ApiError;
 			}
+			else
+				return Result::Success;
 		}
 		else //Caller knows the number of GPUs and wants details
 		{
 			const uint32_t origCount = (*count);
-			VkPhysicalDevice *devices = new VkPhysicalDevice[origCount]();
-			if (Failed(vkEnumeratePhysicalDevices(m_instance, count, devices)))
+			auto gpus = std::make_unique<VkPhysicalDevice[]>(origCount);
+			if (Failed(vkEnumeratePhysicalDevices(m_instance, count, gpus.get())))
 			{
-				delete[] devices;
 				Basilisk::errorMessage = "Basilisk::VulkanInstance::EnumeratePhysicalDevices()'s call to vkEnumeratePhysicalDevices() failed";
 				return Result::ApiError;
 			}
@@ -211,19 +195,18 @@ Result VulkanInstance::EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice 
 
 				for (uint32_t i = 0; i < origCount; ++i)
 				{
-					if (nullptr != devices[i])
+					if (nullptr != gpus[i])
 					{
-						VkPhysicalDeviceProperties props = { 0 };
-						vkGetPhysicalDeviceProperties(devices[i], &props);
+						VkPhysicalDeviceProperties props;
+						vkGetPhysicalDeviceProperties(gpus[i], &props);
 
 						details[i].memory = props.limits.maxMemoryAllocationCount / 1024 / 1024;  //Store the GPU's memory (in MB)
 						details[i].vendorId = props.vendorID;    //Store the manufacturer
 						details[i].deviceId = props.deviceID;    //Store the device model
 						details[i].name = props.deviceName;      //Store the device name
-						details[i].supportsApi = Succeeded(vkCreateDevice(devices[i], &info, nullptr, nullptr)); //Check if this GPU supports Vulkan
+						details[i].supportsApi = Succeeded(vkCreateDevice(gpus[i], &info, nullptr, nullptr)); //Check if this GPU supports Vulkan
 					}
 				}
-				delete[] devices;
 			}
 		}
 	}
@@ -239,66 +222,62 @@ template<> Result D3D12Instance::CreateDevice<D3D12Device>(uint32_t gpuIndex, D3
 		return Result::IllegalState;
 	}
 
-	IDXGIAdapter *adapter;
+	IDXGIAdapter *adapter = nullptr;
 
-	if (DXGI_ERROR_NOT_FOUND == m_factory->EnumAdapters(gpuIndex, &adapter))
+	if (DXGI_ERROR_NOT_FOUND == m_factory->EnumAdapters(gpuIndex, &adapter)) //The target gpu is invalid
 	{
-		//The target device is invalid
 		Basilisk::errorMessage = "Basilisk::D3D12Instance::CreateDevice() attempted to start up on a nonexistent GPU";
-		return Result::ApiError;
-	}
-
-	HRESULT result = D3D12CreateDevice(adapter, featureLevel, _uuidof(ID3D12Device), reinterpret_cast<void**>(out));
-
-	adapter->Release();
-	adapter = nullptr;
-
-	if (Failed(result))
-	{
-		Basilisk::errorMessage = "Basilisk::D3D12Instance::CreateDevice()'s call to D3D12CreateDevice() was unsucessful";
 		return Result::ApiError;
 	}
 	else
 	{
-		return Result::Success;
+		HRESULT result = D3D12CreateDevice(adapter, featureLevel, _uuidof(ID3D12Device), reinterpret_cast<void**>(out));
+		adapter->Release();
+		adapter = nullptr;
+
+		if (Failed(result))
+		{
+			Basilisk::errorMessage = "Basilisk::D3D12Instance::CreateDevice()'s call to D3D12CreateDevice() was unsucessful";
+			return Result::ApiError;
+		}
 	}
+	out->m_factory = m_factory;
+
+	return Result::Success;
 }
 
 template<> Result VulkanInstance::CreateDevice<VulkanDevice>(uint32_t gpuIndex, VulkanDevice *&out)
 {
 	uint32_t count = gpuIndex + 1;
-	VkPhysicalDevice *devices = new VkPhysicalDevice[count]();
-	if (Failed(vkEnumeratePhysicalDevices(m_instance, &count, devices)))
+	auto gpus = std::make_unique<VkPhysicalDevice[]>(count);
+	if (Failed( vkEnumeratePhysicalDevices(m_instance, &count, gpus.get()) ))
 	{
-		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice()'s call to vkEnumeratePhysicalDevices() failed";
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() failed to enumerate physical devices";
 		return Result::ApiError;
 	}
 	else //Enumerated devices successfully
 	{
 		VkDeviceCreateInfo info = {
 			VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-			nullptr,        //Reserved
-			0,              //Flags
-			0,              //Queue count
-			nullptr,        //Queue properties
-			layerCount,     //Layer count
-			layerNames,     //Layer types
-			extensionCount, //Extension count
-			extensionNames, //Extension names
-			nullptr         //Not enabling any device features
+			nullptr,         //Reserved
+			0,               //Flags
+			0,               //Queue count
+			nullptr,         //Queue properties
+			layerCount,      //Layer count
+			layerNames,      //Layer types
+			extensionCount,  //Extension count
+			extensionNames,  //Extension names
+			nullptr          //Not enabling any device features
 		};
 		
 		out = new VulkanDevice();
-		out->m_gpu = devices[gpuIndex];
-		if (Failed(vkCreateDevice(devices[gpuIndex], &info, nullptr, out->m_device);
+		out->m_gpu = gpus[gpuIndex];
+		if (Failed(vkCreateDevice(gpus[gpuIndex], &info, nullptr, &out->m_device) ))
 		{
 			SafeRelease(out);
-			delete[] devices;
-			Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice()'s call to vkCreateDevice() failed";
+			Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() failed to create the device";
 			return Result::ApiError;
 		}
-		
-		delete[] devices;
 	}
 	
 	return Result::Success;
@@ -307,7 +286,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(uint32_t gpuIndex, 
 D3D12Device::D3D12Device() : m_device(nullptr) {
 }
 
-VulkanDevice::VulkanDevice() : m_device(nullptr) {
+VulkanDevice::VulkanDevice() : m_device(nullptr), m_gpu(nullptr), m_instance(nullptr) {
 }
 
 void D3D12Device::Release() {
@@ -326,10 +305,6 @@ template<> Result Basilisk::D3D12Device::CreateGraphicsPipeline<D3D12GraphicsPip
 {
 	out = new D3D12GraphicsPipeline();
 
-	//
-	//
-	//
-
 	return Result::Success;
 }
 
@@ -337,22 +312,96 @@ template<> Result VulkanDevice::CreateGraphicsPipeline<VulkanGraphicsPipeline>(V
 {
 	
 	out = new VulkanGraphicsPipeline();
-
-	//
-	//
-	//
 	
 	return Result::Success;
 }
 
-template<> Result D3D12Device::CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out)
+template<> Result D3D12Device::CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples)
 {
 	
 }
 
-template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out)
+template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples)
 {
+	out = new VulkanSwapChain();
+	VkResult res;
+
+	//
+	////
+	//Store a handle to the window surface as a render target
+	////
+	//
+
+	VkWin32SurfaceCreateInfoKHR surfaceInfo = {
+		VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+		nullptr,     //Reserved
+		0,           //No flags allowed
+		connection,  //Handle to the process
+		window       //Handle to the window
+	};
 	
+	res = vkCreateWin32SurfaceKHR(m_instance, &surfaceInfo, nullptr, &out->m_windowSurface);
+	if (Failed(res))
+	{
+		SafeRelease(out);
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateSwapChain() could not connect to the provided window";
+		return Result::ApiError;
+	}
+	else
+	{
+		auto supportsPresent = std::make_unique<VkBool32[]>(m_queues.size());
+		for (uint32_t i = 0; i < m_queues.size(); ++i) //Loop through the list of queues
+		{
+			res = vkGetPhysicalDeviceSurfaceSupportKHR(m_gpu, i, out->m_windowSurface, &supportsPresent[i]);
+			if (Failed(res)) //Error getting the GPU's surface support
+			{
+				SafeRelease(out);
+				Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateSwapChain() could not query the GPU's surface support";
+				return Result::ApiError;
+			}
+		}
+
+		//Find a queue which supports graphics and present
+		uint32_t graphicsQueueNodeIndex = std::numeric_limits<uint32_t>::max();
+		for (uint32_t i = 0; i < m_queues.size(); ++i)
+		{
+			if ((m_queues[i].props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0
+				&& supportsPresent[i])
+			{
+				graphicsQueueNodeIndex = i;
+				break;
+			}
+		}
+		if (std::numeric_limits<uint32_t>::max() == graphicsQueueNodeIndex)
+		{
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateSwapChain() could not locate a present-capable graphics queue";
+			return Result::ApiError;
+		}
+
+
+	}
+
+	VkSurfaceCapabilitiesKHR surfaceCaps;
+	uint32_t presentModeCount;
+	auto presentModes = std::make_unique<VkPresentModeKHR[]>(presentModeCount);// VkPresentModeKHR[presentModeCount];
+	VkExtent2D swapChainExtent;
+	constexpr VkPresentModeKHR swapChainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+	VkSurfaceTransformFlagBitsKHR preTransform;
+	VkSwapchainCreateInfoKHR swapChainInfo;
+
+	
+	res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_gpu, out->m_windowSurface, &surfaceCaps);
+	if (Failed(res)) //Could not get surface capabilities
+	{
+		SafeRelease(out);
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateSwapChain()'s call to vkGetPhysicalDeviceSurfaceCapabilities() failed";
+		return Result::ApiError;
+	}
+	else //Got surface capabilities
+	{
+
+	}
 }
 
 /*

@@ -1,11 +1,11 @@
 /**
 \file   result.h
 \author Andrew Baxter
-\date   February 21, 2016
+\date   February 25, 2016
 
 Defines a series of all-purpose error (or success) codes to be used by components of the game engine
 
-\todo Properly capitalize APIError to ApiError
+\todo How viable is a `BASILISK_DISABLE_ERRORCHECKS` macro?
 
 */
 
@@ -16,15 +16,13 @@ Defines a series of all-purpose error (or success) codes to be used by component
 
 namespace Basilisk
 {
-	/**
-	Used to store a global error message giving specifics about what went wrong
-	*/
+	//Used to store a global error message giving specifics about what went wrong
 	extern std::string errorMessage;
 
 	/**
 	All-pupose error (or success) codes to be used by components of the Basilisk game engine
 
-	\todo Is `DeviceLost` already covered in `APIFailure`? I figure it has its merits.
+	\todo Is `DeviceLost` already covered in `ApiError`?
 	*/
 	enum class Result : int8_t
 	{
