@@ -1,7 +1,7 @@
 /**
 \file   swap_chain.h
 \author Andrew Baxter
-\date February 21, 2016
+\date February 26, 2016
 
 Implements swap chains in Vulkan and Direct3D 12
 
@@ -70,7 +70,8 @@ namespace Basilisk
 	class D3D12SwapChain : public SwapChain<D3D12SwapChain>
 	{
 	public:
-		friend class D3D12Device;
+		friend class D3D12Instance;
+
 	private:
 		D3D12SwapChain();
 		~D3D12SwapChain() = default;
@@ -87,13 +88,14 @@ namespace Basilisk
 	class VulkanSwapChain : public SwapChain<VulkanSwapChain>
 	{
 	public:
-		friend class VulkanDevice;
-	private:
+		friend class VulkanInstance;
+
 		struct RenderTarget
 		{
 			VkImage image;
 			VkImageView view;
 		};
+	private:
 
 		VulkanSwapChain();
 		~VulkanSwapChain() = default;
@@ -101,7 +103,7 @@ namespace Basilisk
 		VkSwapchainKHR m_swapChain;
 		VkSurfaceKHR m_windowSurface;
 		VkFormat m_format;
-		RenderTarget *m_targets;
+		std::vector<RenderTarget> m_targets;
 		uint32_t m_numTargets;
 	};
 }

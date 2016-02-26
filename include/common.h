@@ -1,7 +1,7 @@
 /**
 \file   common.h
 \author Andrew Baxter
-\date   February 23, 2015
+\date   February 26, 2015
 
 Includes universally-required headers
 
@@ -11,7 +11,7 @@ Includes universally-required headers
 #define BASILISK_COMMON_H
 
 #include <stdint.h>
-
+#include <vector>
 
 #define WIN32_LEAN_AND_MEAN
 #define VK_USE_PLATFORM_WIN32_KHR

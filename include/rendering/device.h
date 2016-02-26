@@ -6,7 +6,6 @@
 The virtual interface with the selected graphics API
 
 \todo Don't shirk off creating the pipeline object
-\todo Change the way `Device::EnumeratePhysicalDevices` works
 
 */
 
@@ -89,7 +88,7 @@ namespace Basilisk
 		Gives an error message when idiots try to create a Vulkan pipeline with a D3D12 device
 		*/
 		template<class PipelineType> Result CreateGraphicsPipeline(PipelineType *&out) {
-			static_assert(false, "Basilisk::D3D12Device::CreateGraphicsPipeline() is not specialized for the provided type.");
+			static_assert(false, "Basilisk::D3D12Device::CreateGraphicsPipeline() is not specialized for the provided type");
 		}
 		/**
 		Partial specialization of `Device::CreateGraphicsPipeline` for D3D12 graphics pipelines
@@ -105,7 +104,7 @@ namespace Basilisk
 		\tparam SwapChainType Anything that isn't `D3D12SwapChain` will resolve here
 		*/
 		template<class SwapChainType> Result CreateSwapChain(SwapChainType *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, uint8_t numBuffers = 2, uint8_t numSamples = 1) {
-			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type.");
+			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type");
 		}
 		/**
 		\brief Partial specialization of `Device::CreateSwapChain`, working only with compatible API objects
@@ -159,7 +158,7 @@ namespace Basilisk
 		Gives an error message when idiots try to create a D3D12 pipeline with a Vulkan device
 		*/
 		template<class PipelineType> Result CreateGraphicsPipeline(PipelineType *&out) {
-			static_assert(false, "Basilisk::VulkanDevice::CreateGraphicsPipeline() is not specialized for the provided type.");
+			static_assert(false, "Basilisk::VulkanDevice::CreateGraphicsPipeline() is not specialized for the provided type");
 		}
 		/**
 		Partial specialization of `Device::CreateGraphicsPipeline`, working only with compatible API objects
@@ -175,7 +174,7 @@ namespace Basilisk
 		\tparam SwapChainType Anything that isn't `VulkanSwapChain` will resolve here
 		*/
 		template<class SwapChainType> Result CreateSwapChain(SwapChainType *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, uint8_t numBuffers = 2, uint8_t numSamples = 1) {
-			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type.");
+			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type");
 		}
 		/**
 		Partial specialization of `Device::CreateSwapChain`, working only with compatible API objects
@@ -198,12 +197,14 @@ namespace Basilisk
 		Cleans up after itself
 		*/
 		void Release();
-	private:
+
 		struct Queue
 		{
 			VkQueue queue;
 			VkQueueFamilyProperties props;
 		};
+
+	private:
 
 		VulkanDevice();
 		~VulkanDevice() = default; //All handled in the `Release()` function
@@ -227,7 +228,7 @@ namespace Basilisk
 		uint32_t vendorId;
 		uint32_t deviceId;
 		std::string name;
-		bool supportsApi;
+		//bool supportsApi;
 	};
 
 
@@ -260,13 +261,17 @@ namespace Basilisk
 			return GetImplementation().Initialize(appName);
 		}
 
+		/** Cleans up after itself */
+		inline void Release() {
+			GetImplementation().Release();
+		}
+
 		/**
-		Counts and/or lists the number of connected GPUs
+		Counts and stores all connected GPUs
 		\param[out] count Where to store the number of connected GPUs
-		\param[out] details Where to store the details of each connected GPU
 		*/
-		inline Result EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice *details) {
-			return GetImplementation().EnumeratePhysicalDevices(count, details);
+		inline Result FindGpus(uint32_t *count) {
+			return GetImplementation().FindGpus(count);
 		}
 
 		/**
@@ -282,9 +287,7 @@ namespace Basilisk
 		}
 	};
 
-	/**
-	Implements the `Instance` interface for Direct3D 12
-	*/
+	/** Implements the `Instance` interface for Direct3D 12 */
 	class D3D12Instance : Instance<D3D12Instance>
 	{
 	public:
@@ -297,19 +300,19 @@ namespace Basilisk
 		*/
 		Result Initialize(const std::string &appName = "");
 		
-		/**
-		Counts and/or lists the number of connected GPUs
-		\param[out] count Where to store the number of connected GPUs
-		\param[out] details Where to store the details of each connected GPU
-		*/
-		Result EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice *details);
+		/** Cleans up after itself */
+		void Release();
 
 		/**
-		Gives an error message when idiots try to create a Vulkan device with a D3D12 instance
+		Counts and stores all connected GPUs
+		\param[out] count Where to store the number of connected GPUs
 		*/
+		Result FindGpus(uint32_t *count);
+
+		/** Gives an error message when idiots try to create a Vulkan device with a D3D12 instance */
 		template<class DeviceType>
 		Result CreateDevice(uint32_t gpuIndex, DeviceType *&out) {
-			static_assert(false, "Basilisk::D3D12Instance::CreateDevice() is not specialized for the provided type.");
+			static_assert(false, "Basilisk::D3D12Instance::CreateDevice() is not specialized for the provided type");
 		}
 		
 		/**
@@ -320,14 +323,21 @@ namespace Basilisk
 		\return Details about potential failure
 		*/
 		template<> Result CreateDevice<D3D12Device>(uint32_t gpuIndex, D3D12Device *&out);
+
+		struct GPU
+		{
+			IDXGIAdapter *adapter;
+			DXGI_ADAPTER_DESC desc;
+		};
 	private:
 		IDXGIFactory4 *m_factory;
+		std::vector<GPU> m_gpus;
+
 		static constexpr D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_12_0;
+		static constexpr size_t MAX_DESC_LEN = 128; //Obtained from dxgi.h, line 195
 	};
 
-	/**
-	Implements the `Instance` interface for Vulkan
-	*/
+	/** Implements the `Instance` interface for Vulkan */
 	class VulkanInstance : Instance<VulkanInstance>
 	{
 	public:
@@ -342,21 +352,23 @@ namespace Basilisk
 		*/
 		Result Initialize(const std::string &appName = "");
 
+		/** Cleans up after itself */
+		void Release();
+
 		/**
-		Counts and/or lists the number of connected GPUs
+		Counts and stores all connected GPUs
 		\param[out] count Where to store the number of connected GPUs
-		\param[out] details Where to store the details of each connected GPU
 		
 		\todo Check out VkPhysicalDeviceMemoryProperties
 		*/
-		Result EnumeratePhysicalDevices(uint32_t *count, PhysicalDevice *details);
+		Result FindGpus(uint32_t *count);
 
 		/**
 		Gives an error message when idiots try to create a D3D12 device with a Vulkan instance
 		*/
 		template<class DeviceType>
 		Result CreateDevice(uint32_t gpuIndex, DeviceType *&out) {
-			static_assert(false, "Basilisk::VulkanInstance::CreateDevice() is not specialized for the provided type.");
+			static_assert(false, "Basilisk::VulkanInstance::CreateDevice() is not specialized for the provided type");
 		}
 
 		/**
@@ -367,13 +379,24 @@ namespace Basilisk
 		\return Details about potential failure
 		*/
 		template<> Result CreateDevice<VulkanDevice>(uint32_t gpuIndex, VulkanDevice *&out);
+
+		struct GPU
+		{
+			VkPhysicalDevice device;
+			VkPhysicalDeviceProperties props;
+			std::vector<VkQueueFamilyProperties> queueDescs;
+			VkPhysicalDeviceMemoryProperties memoryProps;
+		};
 	private:
+
 		VkInstance m_instance;
 		static constexpr uint32_t layerCount = 0;
 		static const char* const* layerNames;
 		
 		static constexpr uint32_t extensionCount = 3;
 		static const char* extensionNames[extensionCount];
+
+		std::vector<GPU> m_gpus;
 	};
 }
 
