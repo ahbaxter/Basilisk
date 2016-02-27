@@ -72,6 +72,11 @@ namespace Basilisk
 		inline Result CreateSwapChain(SwapChainType *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution = { 0, 0 }, uint8_t numBuffers = 2, uint8_t numSamples = 1) {
 			return GetImplementation().CreateSwapChain(out, connection, window, resolution, numBuffers, numSamples);
 		}
+		
+		/** Presents the swap chain we've rendered to (if any) */
+		inline void Present() {
+			return GetImplementation().Present();
+		}
 	};
 
 	/** Implements the `Device` interface for Direct3D 12 */
@@ -118,6 +123,8 @@ namespace Basilisk
 		template<> Result CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples);
 
 
+		void Present();
+
 		/** Cleans up after itself */
 		void Release();
 	private:
@@ -128,10 +135,8 @@ namespace Basilisk
 		ID3D12Device *m_device;
 		ID3D12CommandQueue *m_commandQueue;
 		ID3D12CommandAllocator *m_commandAllocator;
-		IDXGIFactory4 *m_factory;
 		
 		/* Remove from this class:
-		ID3D12GraphicsCommandList *m_commandList;
 		ID3D12Fence *m_fence;
 		HANDLE m_fenceEvent;
 		uint64_t m_fenceValue;|
@@ -181,6 +186,9 @@ namespace Basilisk
 		*/
 		template<> Result CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples);
 
+
+		void Present();
+
 		/** Cleans up after itself */
 		void Release();
 
@@ -196,9 +204,6 @@ namespace Basilisk
 
 		VkDevice m_device;
 		std::vector<Queue> m_queues;
-
-		VkPhysicalDevice m_gpu; //Needed to create swap chains
-		VkInstance m_instance; //Needed to create swap chains
 	};
 
 
@@ -216,6 +221,11 @@ namespace Basilisk
 		//bool supportsApi;
 	};
 
+	struct PlatformInfo
+	{
+		HINSTANCE connection;
+		HWND window;
+	};
 
 
 	/**
@@ -239,11 +249,12 @@ namespace Basilisk
 		/**
 		Initializes the selected API
 		
+		\param[in] platformInfo Stores information about the target platform
 		\param[in] appName The title of your application
 		\return Details about potential failure
 		*/
-		inline Result Initialize(const std::string &appName = "") {
-			return GetImplementation().Initialize(appName);
+		inline Result Initialize(const PlatformInfo &platformInfo, const std::string &appName = "") {
+			return GetImplementation().Initialize(platformInfo, appName);
 		}
 
 		/** Cleans up after itself */
@@ -270,6 +281,8 @@ namespace Basilisk
 		inline Result CreateDevice(uint32_t gpuIndex, DeviceType *&out) {
 			return GetImplementation().CreateDevice(gpuIndex, out);
 		}
+	protected:
+		PlatformInfo m_platformInfo;
 	};
 
 	/** Implements the `Instance` interface for Direct3D 12 */
@@ -281,9 +294,12 @@ namespace Basilisk
 
 		/**
 		Boots up D3D12
+		
+		\param[in] platformInfo Stores information about the target platform
 		\param[in] appName Not used in D3D12
+		\return Details about potential failure
 		*/
-		Result Initialize(const std::string &appName = "");
+		inline Result Initialize(const PlatformInfo &platformInfo, const std::string &appName = "");
 		
 		/** Cleans up after itself */
 		void Release();
@@ -331,11 +347,12 @@ namespace Basilisk
 
 		/**
 		Boots up Vulkan
-		\param[in] appName Lets GPU drivers know who you are
-
-		\todo Look into custom memory allocation
+		
+		\param[in] platformInfo Stores information about the target platform
+		\param[in] appName The title of your application
+		\return Details about potential failure
 		*/
-		Result Initialize(const std::string &appName = "");
+		inline Result Initialize(const PlatformInfo &platformInfo, const std::string &appName = "");
 
 		/** Cleans up after itself */
 		void Release();
@@ -369,18 +386,21 @@ namespace Basilisk
 			VkPhysicalDeviceProperties props;
 			std::vector<VkQueueFamilyProperties> queueDescs;
 			VkPhysicalDeviceMemoryProperties memoryProps;
+			VkSurfaceKHR windowSurface;
+			VkSurfaceCapabilitiesKHR surfaceCaps;
 		};
 
 	private:
 		VkInstance m_instance;
+		std::vector<GPU> m_gpus;
+
+
 		static constexpr uint32_t layerCount = 0;
 		static const char* const* layerNames;
 		
 		static constexpr uint32_t extensionCount = 3;
 		static const char* extensionNames[extensionCount];
 
-		std::vector<GPU> m_gpus;
-		
 		static constexpr uint32_t apiVersion = 1;
 	};
 }

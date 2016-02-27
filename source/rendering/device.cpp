@@ -24,13 +24,19 @@ const char* VulkanInstance::extensionNames[VulkanInstance::extensionCount] = {
 };
 
 D3D12Instance::D3D12Instance() {
+	m_platformInfo = { };
 }
 
 VulkanInstance::VulkanInstance() : m_instance(nullptr) {
+	m_platformInfo = {};
 }
 
-Result D3D12Instance::Initialize(const std::string &appName)
+Result D3D12Instance::Initialize(const PlatformInfo &platformInfo, const std::string &appName)
 {
+	//Store the process and window handles
+	m_platformInfo.connection = platformInfo.connection;
+	m_platformInfo.window = platformInfo.window;
+
 	//Create the DirectX graphics interface factory
 	if (Failed( CreateDXGIFactory1(__uuidof(IDXGIFactory4), reinterpret_cast<void**>(&m_factory)) ))
 	{
@@ -41,8 +47,13 @@ Result D3D12Instance::Initialize(const std::string &appName)
 	return Result::Success;
 }
 
-Result VulkanInstance::Initialize(const std::string &appName)
+Result VulkanInstance::Initialize(const PlatformInfo &platformInfo, const std::string &appName)
 {
+	//Store the process and window handles
+	m_platformInfo.connection = platformInfo.connection;
+	m_platformInfo.window = platformInfo.window;
+
+
 	//Should I let them specify application version as well?
 	VkApplicationInfo appInfo =
 	{
@@ -212,7 +223,7 @@ template<> Result D3D12Instance::CreateDevice<D3D12Device>(uint32_t gpuIndex, D3
 	
 	out = new D3D12Device();
 
-	if (Failed( D3D12CreateDevice(m_gpus[gpuIndex].adapter, featureLevel, _uuidof(ID3D12Device), reinterpret_cast<void**>(out.m_device)) ))
+	if (Failed( D3D12CreateDevice(m_gpus[gpuIndex].adapter, featureLevel, _uuidof(ID3D12Device), reinterpret_cast<void**>(&out->m_device)) ))
 	{
 		SafeRelease(out);
 		Basilisk::errorMessage = "Basilisk::D3D12Instance::CreateDevice()'s call to D3D12CreateDevice() was unsucessful";
@@ -230,16 +241,120 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(uint32_t gpuIndex, 
 		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() was called before the instance was successfully initialized";
 		return Result::IllegalState;
 	}
+	if (0 == m_platformInfo.connection)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() was called with an invalid process handle";
+		return Result::IllegalState;
+	}
+	if (0 == m_platformInfo.window)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() was called with an invalid window handle";
+		return Result::IllegalState;
+	}
 #endif
 
 	//Meets all prerequisites
 
-	VkDeviceCreateInfo info = {
+
+	//
+	////Grab a VkSurface object from the provided window
+	//
+
+	VkResult res;
+	VkWin32SurfaceCreateInfoKHR surface_info = {
+		VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+		nullptr,                   //Reserved
+		0,                         //No flags
+		m_platformInfo.connection, //Handle to the process
+		m_platformInfo.window      //Handle to the window
+	};
+
+	res = vkCreateWin32SurfaceKHR(m_instance, &surface_info, nullptr, &m_gpus[gpuIndex].windowSurface);
+	if (Failed(res))
+	{
+		SafeRelease(out);
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() could not connect to the provided window";
+		return Result::ApiError;
+	}
+
+	//
+	////Find a graphics queue which supports present
+	//
+
+	auto supportsPresent = std::make_unique<VkBool32[]>(m_gpus[gpuIndex].queueDescs.size());
+	for (uint32_t i = 0; i < m_gpus[gpuIndex].queueDescs.size(); ++i)
+	{
+		res = vkGetPhysicalDeviceSurfaceSupportKHR(m_gpus[gpuIndex].device, i, m_gpus[gpuIndex].windowSurface, &supportsPresent[i]);
+		if (Failed(res))
+		{
+			//Error getting the GPU's surface support
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() could not query the GPU's surface support";
+			return Result::ApiError;
+		}
+	}
+
+	uint32_t graphicsQueueNodeIndex = std::numeric_limits<uint32_t>::max();
+	for (uint32_t i = 0; i < m_gpus[gpuIndex].queueDescs.size(); ++i)
+	{
+		if ((m_gpus[gpuIndex].queueDescs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0
+			&& supportsPresent[i])
+		{
+			//Found a queue that fits our criteria
+			graphicsQueueNodeIndex = i;
+			break;
+		}
+	}
+
+	if (std::numeric_limits<uint32_t>::max() == graphicsQueueNodeIndex)
+	{
+		SafeRelease(out);
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() could not locate a present-capable graphics queue";
+		return Result::ApiError;
+	}
+
+	/*
+	// Get the list of VkFormats that are supported:
+	uint32_t formatCount;
+	res = vkGetPhysicalDeviceSurfaceFormatsKHR(info.gpus[0], info.surface,
+		&formatCount, NULL);
+	assert(res == VK_SUCCESS);
+	VkSurfaceFormatKHR *surfFormats =
+		(VkSurfaceFormatKHR *)malloc(formatCount * sizeof(VkSurfaceFormatKHR));
+	res = vkGetPhysicalDeviceSurfaceFormatsKHR(info.gpus[0], info.surface,
+		&formatCount, surfFormats);
+	assert(res == VK_SUCCESS);
+	// If the format list includes just one entry of VK_FORMAT_UNDEFINED,
+	// the surface has no preferred format.  Otherwise, at least one
+	// supported format will be returned.
+	if (formatCount == 1 && surfFormats[0].format == VK_FORMAT_UNDEFINED) {
+		info.format = VK_FORMAT_B8G8R8A8_UNORM;
+	}
+	else {
+		assert(formatCount >= 1);
+		info.format = surfFormats[0].format;
+	}
+	*/
+
+	//
+	////Create the device
+	//
+	
+	VkDeviceQueueCreateInfo queue_info = { };
+
+	float queue_priorities[1] = { 0.0 };
+	queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queue_info.pNext = NULL;
+	queue_info.queueCount = 1;
+	queue_info.pQueuePriorities = queue_priorities;
+	queue_info.queueFamilyIndex = graphicsQueueNodeIndex;
+
+	VkDeviceCreateInfo device_info = {
 		VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 		nullptr,         //Reserved
 		0,               //Flags
-		m_gpus[gpuIndex].queueDescs.size(),  //Queue count
-		m_gpus[gpuIndex].queueDescs.data(),  //Queue properties
+		1,               //Queue count
+		&queue_info,     //Queue properties
 		layerCount,      //Layer count
 		layerNames,      //Layer types
 		extensionCount,  //Extension count
@@ -248,7 +363,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(uint32_t gpuIndex, 
 	};
 	
 	out = new VulkanDevice();
-	if (Failed(vkCreateDevice(gpus[gpuIndex], &info, nullptr, &out->m_device) ))
+	if (Failed(vkCreateDevice(m_gpus[gpuIndex].device, &device_info, nullptr, &out->m_device) ))
 	{
 		SafeRelease(out);
 		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() failed to create the device";
@@ -263,7 +378,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(uint32_t gpuIndex, 
 D3D12Device::D3D12Device() : m_device(nullptr) {
 }
 
-VulkanDevice::VulkanDevice() : m_device(nullptr), m_gpu(nullptr), m_instance(nullptr) {
+VulkanDevice::VulkanDevice() : m_device(nullptr) {
 }
 
 void D3D12Device::Release() {
@@ -278,14 +393,13 @@ void VulkanDevice::Release() {
 	}
 }
 
-/* Move to D3D12Instance
+
 template<> Result D3D12Device::CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples)
 {
 	
 }
-*/
 
-/* Move to VulkanInstance
+/*
 template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples)
 {
 	out = new VulkanSwapChain();
@@ -363,7 +477,7 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain>(VulkanSwapChain
 	}
 	else //Got surface capabilities
 	{
-		//Ran into seaign problems here
+		//Ran into design problems here
 		//Will funish resolving tomorrow
 	}
 }

@@ -50,13 +50,6 @@ namespace Basilisk
 		inline void BindSwapChain(const SwapChainType *swapChain) {
 			return GetImplementation().BindSwapChain(swapChain);
 		}
-		
-		/**
-		Presents the swap chain we've rendered to (if any)
-		*/
-		inline void Present() {
-			return GetImplementation().Present();
-		}
 
 		/**
 		Completely wipes the contents of the command list
@@ -71,12 +64,16 @@ namespace Basilisk
 	{
 	public:
 
+	private:
+		ID3D12GraphicsCommandList *m_commandList;
 	};
 
 	class VulkanCommandBuffer : public CommandBuffer<VulkanCommandBuffer>
 	{
 	public:
 
+	private:
+		VkCommandBuffer m_commandBuffer;
 	};
 
 }

@@ -70,7 +70,7 @@ namespace Basilisk
 	class D3D12SwapChain : public SwapChain<D3D12SwapChain>
 	{
 	public:
-		friend class D3D12Instance;
+		friend class D3D12Device;
 
 	private:
 		D3D12SwapChain();
@@ -88,7 +88,7 @@ namespace Basilisk
 	class VulkanSwapChain : public SwapChain<VulkanSwapChain>
 	{
 	public:
-		friend class VulkanInstance;
+		friend class VulkanDevice;
 
 		struct RenderTarget
 		{
