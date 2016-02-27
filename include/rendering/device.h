@@ -1,7 +1,7 @@
 /**
 \file   device.h
 \author Andrew Baxter
-\date   February 21, 2016
+\date   February 26, 2016
 
 The virtual interface with the selected graphics API
 
@@ -36,9 +36,7 @@ namespace Basilisk
 			return static_cast<Impl&>(*this);
 		}
 		
-		/**
-		Cleans up after itself
-		*/
+		/** Cleans up after itself */
 		inline void Release() {
 			return GetImplementation().Release();
 		}
@@ -76,17 +74,13 @@ namespace Basilisk
 		}
 	};
 
-	/**
-	Implements the `Device` interface for Direct3D 12
-	*/
+	/** Implements the `Device` interface for Direct3D 12 */
 	class D3D12Device : public Device<D3D12Device>
 	{
 	public:
 		friend class D3D12Instance; //Make sure that this can be instantiated through a proper `Instance` object
 
-		/**
-		Gives an error message when idiots try to create a Vulkan pipeline with a D3D12 device
-		*/
+		/** Gives an error message when idiots try to create a Vulkan pipeline with a D3D12 device */
 		template<class PipelineType> Result CreateGraphicsPipeline(PipelineType *&out) {
 			static_assert(false, "Basilisk::D3D12Device::CreateGraphicsPipeline() is not specialized for the provided type");
 		}
@@ -124,9 +118,7 @@ namespace Basilisk
 		template<> Result CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples);
 
 
-		/**
-		Cleans up after itself
-		*/
+		/** Cleans up after itself */
 		void Release();
 	private:
 
@@ -142,21 +134,17 @@ namespace Basilisk
 		ID3D12GraphicsCommandList *m_commandList;
 		ID3D12Fence *m_fence;
 		HANDLE m_fenceEvent;
-		uint64_t m_fenceValue;
+		uint64_t m_fenceValue;|
 		*/
 	};
 
-	/**
-	Implements the `Device` interface for Vulkan
-	*/
+	/** Implements the `Device` interface for Vulkan */
 	class VulkanDevice : public Device<VulkanDevice>
 	{
 	public:
 		friend class VulkanInstance; //Make sure that this can be instantiated through a proper `Instance` object
 
-		/**
-		Gives an error message when idiots try to create a D3D12 pipeline with a Vulkan device
-		*/
+		/** Gives an error message when idiots try to create a D3D12 pipeline with a Vulkan device */
 		template<class PipelineType> Result CreateGraphicsPipeline(PipelineType *&out) {
 			static_assert(false, "Basilisk::VulkanDevice::CreateGraphicsPipeline() is not specialized for the provided type");
 		}
@@ -193,9 +181,7 @@ namespace Basilisk
 		*/
 		template<> Result CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out, HINSTANCE connection, HWND window, Bounds2D<uint16_t> resolution, uint8_t numBuffers, uint8_t numSamples);
 
-		/**
-		Cleans up after itself
-		*/
+		/** Cleans up after itself */
 		void Release();
 
 		struct Queue
@@ -205,7 +191,6 @@ namespace Basilisk
 		};
 
 	private:
-
 		VulkanDevice();
 		~VulkanDevice() = default; //All handled in the `Release()` function
 
@@ -363,9 +348,7 @@ namespace Basilisk
 		*/
 		Result FindGpus(uint32_t *count);
 
-		/**
-		Gives an error message when idiots try to create a D3D12 device with a Vulkan instance
-		*/
+		/** Gives an error message when idiots try to create a D3D12 device with a Vulkan instance */
 		template<class DeviceType>
 		Result CreateDevice(uint32_t gpuIndex, DeviceType *&out) {
 			static_assert(false, "Basilisk::VulkanInstance::CreateDevice() is not specialized for the provided type");
@@ -387,8 +370,8 @@ namespace Basilisk
 			std::vector<VkQueueFamilyProperties> queueDescs;
 			VkPhysicalDeviceMemoryProperties memoryProps;
 		};
-	private:
 
+	private:
 		VkInstance m_instance;
 		static constexpr uint32_t layerCount = 0;
 		static const char* const* layerNames;
@@ -397,6 +380,8 @@ namespace Basilisk
 		static const char* extensionNames[extensionCount];
 
 		std::vector<GPU> m_gpus;
+		
+		static constexpr uint32_t apiVersion = 1;
 	};
 }
 
