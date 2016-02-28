@@ -1,7 +1,7 @@
 /**
 \file   command_buffer.cpp
 \author Andrew Baxter
-\date   February 27, 2016
+\date   February 28, 2016
 
 Defines the behavior of Vulkan and D3D12 command buffers
 
@@ -84,4 +84,9 @@ void VulkanCmdBuffer::PrepareSwapChain(const VulkanSwapChain &swapChain)
 		vkCmdPipelineBarrier(m_commandBuffer, src_stages, dest_stages, 0, 0, nullptr, 0, nullptr,
 			1, &image_memory_barrier);
 	}
+}
+
+VulkanCmdBuffer::WriteBundle(const VulkanCmdBuffer bundle)
+{
+	vkCmdExecuteCommands(m_commandBuffer, 1, &bundle);
 }

@@ -1,7 +1,7 @@
 /**
 \file   device.cpp
 \author Andrew Baxter
-\date   February 27, 2016
+\date   February 28, 2016
 
 Defines the behavior of Vulkan and D3D12 rendering backends
 
@@ -217,23 +217,60 @@ Result VulkanInstance::FindGpus(uint32_t *count)
 
 	if (Failed(vkEnumeratePhysicalDevices(m_instance, count, nullptr)))
 	{
-		Basilisk::errorMessage = "Basilisk::VulkanInstance::FindGpus()'s could not enumerate physical devices";
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::FindGpus()'s could not count physical devices";
 		return Result::ApiError;
 	}
 
 	m_gpus.resize(*count);
+	m_gpuProps.resize(*count);
+	
+	if (Failed(vkEnumeratePhysicalDevices(m_instance, count, m_gpus.data())))
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::FindGpus()'s could not list physical devices";
+		return Result::ApiError;
+	}
 
 	for (uint32_t i = 0; i < (*count); ++i)
 	{
-		vkGetPhysicalDeviceProperties(m_gpus[i].device, &m_gpus[i].props);
-		vkGetPhysicalDeviceMemoryProperties(m_gpus[i].device, &m_gpus[i].memoryProps);
+		//Store details
+		
+		vkGetPhysicalDeviceProperties(m_gpus[i], &m_gpuProps[i].props);
+		vkGetPhysicalDeviceMemoryProperties(m_gpus[i], &m_gpuProps[i].memoryProps);
 
 		uint32_t numQueues;
-		vkGetPhysicalDeviceQueueFamilyProperties(m_gpus[i].device, &numQueues, nullptr);
+		vkGetPhysicalDeviceQueueFamilyProperties(m_gpus[i], &numQueues, nullptr);
 		if (numQueues >= 1)
 		{
-			m_gpus[i].queueDescs.resize(numQueues);
-			vkGetPhysicalDeviceQueueFamilyProperties(m_gpus[i].device, &numQueues, m_gpus[i].queueDescs.data());
+			m_gpuProps[i].queueDescs.resize(numQueues);
+			vkGetPhysicalDeviceQueueFamilyProperties(m_gpus[i], &numQueues, m_gpuProps[i].queueDescs.data());
+		}
+		
+		//Get optimal depth buffer format
+		//Since all depth formats may be optional, we need to find a suitable depth format to use
+		//Start with the highest precision packed format
+		std::vector<VkFormat> depthFormats = { 
+			VK_FORMAT_D32_SFLOAT_S8_UINT, 
+			VK_FORMAT_D32_SFLOAT,
+			VK_FORMAT_D24_UNORM_S8_UINT, 
+			VK_FORMAT_D16_UNORM_S8_UINT, 
+			VK_FORMAT_D16_UNORM 
+		};
+		m_gpuProps[i].depthFormat = VK_FORMAT_UNDEFINED;
+		for (VkFormat format : depthFormats)
+		{
+			VkFormatProperties formatProps;
+			vkGetPhysicalDeviceFormatProperties(m_gpus[i], format, &formatProps);
+			//Format must support depth stencil attachment for optimal tiling
+			if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+			{
+				m_gpuProps[i].depthFormat = format;
+				break;
+			}
+		}
+		if (VK_FORMAT_UNDEFINED == m_gpuProps[i].depthFormat)
+		{
+			Basilisk::errorMessage = "Basilisk::VulkanInstance::FindGpus() could not find a depth format for all GPUs";
+			return Result::ApiError;
 		}
 	}
 
@@ -273,7 +310,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 		return Result::IllegalState;
 	}
 #endif
-	if (VK_VERSION_MAJOR(apiVersion) >= VK_VERSION_MAJOR(m_gpus[gpuIndex].props.apiVersion))
+	if (VK_VERSION_MAJOR(apiVersion) >= VK_VERSION_MAJOR(m_gpuProps[gpuIndex].props.apiVersion))
 	{
 		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() cannot complete without proper API support";
 		return Result::ApiError;
@@ -282,7 +319,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	//Meets all prerequisites
 
 	out = new VulkanDevice();
-
+	out->m_depthFormat = m_gpuProps[gpuIndex].depthFormat;
 
 	//
 	////Grab a VkSurface object from the provided window
@@ -309,10 +346,10 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	////Find a graphics queue which supports present
 	//
 
-	auto supportsPresent = std::make_unique<VkBool32[]>(m_gpus[gpuIndex].queueDescs.size());
-	for (uint32_t i = 0; i < m_gpus[gpuIndex].queueDescs.size(); ++i)
+	auto supportsPresent = std::make_unique<VkBool32[]>(m_gpuProps[gpuIndex].queueDescs.size());
+	for (uint32_t i = 0; i < m_gpuProps[gpuIndex].queueDescs.size(); ++i)
 	{
-		res = vkGetPhysicalDeviceSurfaceSupportKHR(m_gpus[gpuIndex].device, i, out->m_windowSurface.surface, &supportsPresent[i]);
+		res = vkGetPhysicalDeviceSurfaceSupportKHR(m_gpus[gpuIndex], i, out->m_windowSurface.surface, &supportsPresent[i]);
 		if (Failed(res))
 		{ //Error getting the GPU's surface support
 			SafeRelease(out);
@@ -322,9 +359,9 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	}
 
 	uint32_t graphicsQueueNodeIndex = std::numeric_limits<uint32_t>::max();
-	for (uint32_t i = 0; i < m_gpus[gpuIndex].queueDescs.size(); ++i)
+	for (uint32_t i = 0; i < m_gpuProps[gpuIndex].queueDescs.size(); ++i)
 	{
-		if ((m_gpus[gpuIndex].queueDescs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supportsPresent[i])
+		if ((m_gpuProps[gpuIndex].queueDescs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supportsPresent[i])
 		{ //Found a queue that fits our criteria
 			graphicsQueueNodeIndex = i;
 			break;
@@ -342,7 +379,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	//
 
 	uint32_t formatCount;
-	res = vkGetPhysicalDeviceSurfaceFormatsKHR(m_gpus[gpuIndex].device, out->m_windowSurface.surface, &formatCount, nullptr);
+	res = vkGetPhysicalDeviceSurfaceFormatsKHR(m_gpus[gpuIndex], out->m_windowSurface.surface, &formatCount, nullptr);
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -351,7 +388,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	}
 
 	auto surfFormats = std::make_unique <VkSurfaceFormatKHR[]>(formatCount);
-	res = vkGetPhysicalDeviceSurfaceFormatsKHR(m_gpus[gpuIndex].device, out->m_windowSurface.surface, &formatCount, surfFormats.get());
+	res = vkGetPhysicalDeviceSurfaceFormatsKHR(m_gpus[gpuIndex], out->m_windowSurface.surface, &formatCount, surfFormats.get());
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -367,18 +404,18 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	}
 	else if (formatCount == 1 && surfFormats[0].format == VK_FORMAT_UNDEFINED)
 	{ //Surface has no preferred format
-		out->m_windowSurface.format = VK_FORMAT_B8G8R8A8_UNORM;
+		out->m_windowSurface.colorFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	}
 	else
 	{ //Surface has a preferred format
-		out->m_windowSurface.format = surfFormats[0].format;
+		out->m_windowSurface.colorFormat = surfFormats[0].format;
 	}
 
 	//
 	////Grab the GPU's surface capabilities and present modes
 	//
 
-	res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_gpus[gpuIndex].device, out->m_windowSurface.surface, &out->m_windowSurface.caps);
+	res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_gpus[gpuIndex], out->m_windowSurface.surface, &out->m_windowSurface.caps);
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -387,7 +424,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	}
 
 	uint32_t presentModeCount;
-	res = vkGetPhysicalDeviceSurfacePresentModesKHR(m_gpus[gpuIndex].device, out->m_windowSurface.surface, &presentModeCount, nullptr);
+	res = vkGetPhysicalDeviceSurfacePresentModesKHR(m_gpus[gpuIndex], out->m_windowSurface.surface, &presentModeCount, nullptr);
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -403,7 +440,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 
 	out->m_windowSurface.presentModes.resize(presentModeCount);
 
-	res = vkGetPhysicalDeviceSurfacePresentModesKHR(m_gpus[gpuIndex].device, out->m_windowSurface.surface, &presentModeCount, out->m_windowSurface.presentModes.data());
+	res = vkGetPhysicalDeviceSurfacePresentModesKHR(m_gpus[gpuIndex], out->m_windowSurface.surface, &presentModeCount, out->m_windowSurface.presentModes.data());
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -440,7 +477,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	};
 	
 	out = new VulkanDevice();
-	if (Failed(vkCreateDevice(m_gpus[gpuIndex].device, &device_info, nullptr, &out->m_device) ))
+	if (Failed(vkCreateDevice(m_gpus[gpuIndex], &device_info, nullptr, &out->m_device) ))
 	{
 		SafeRelease(out);
 		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() failed to create the device";
@@ -500,12 +537,6 @@ void VulkanDevice::Release() {
 		vkDestroyDevice(m_device, nullptr);
 		m_device = nullptr;
 	}
-}
-
-
-template<> Result D3D12Device::CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out, Bounds2D<uint32_t> resolution, uint32_t numBuffers, uint32_t numSamples)
-{
-	
 }
 
 
@@ -578,7 +609,7 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain>(VulkanSwapChain
 		0,                                 //No flags
 		m_windowSurface.surface,           //Target surface
 		numBuffers,                        //Number of back buffers
-		m_windowSurface.format,            //Surface format
+		m_windowSurface.colorFormat,            //Surface format
 		VK_COLORSPACE_SRGB_NONLINEAR_KHR,  //Color space
 		swapChainRes,                      //Resolution
 		1,                                 //Image layers
@@ -654,7 +685,7 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain>(VulkanSwapChain
 			0,                          //No flags
 			out->m_backBuffers[i],      //Image
 			VK_IMAGE_VIEW_TYPE_2D,      //Image view type
-			m_windowSurface.format,     //Image format
+			m_windowSurface.colorFormat,     //Image format
 			components,                 //Swizzle RGBA components
 			range                       //Subresource range
 		};
@@ -669,6 +700,97 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain>(VulkanSwapChain
 	}
 
 
+	return Result::Success;
+}
+
+Result VulkanDevice::CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorBuffers, bool enableDepth)
+{
+#ifndef BASILISK_FINAL_BUILD
+	if (0 == numColorBuffers && !enableDepth)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateRenderPass() must have at least one image attachment";
+		return Result::IllegalArgument;
+	}
+#endif
+
+	//Meets all prerequisites
+
+	uint32_t numAttachments = numColorBuffers + (enableDepth ? 1 : 0);
+	auto attachments = std::make_unique<VkAttachmentDescription[]>(numAttachments);
+	auto attachmentRefs = std::make_unique<VkAttachmentReference[]>(numAttachments);
+
+
+	uint32_t i = 0;
+	
+	//Describe the color attachments
+	for ( ; i < numColorBuffers; ++i)
+	{
+		attachments[i].format = m_windowSurface.colorFormat;
+		attachments[i].samples = VK_SAMPLE_COUNT_1_BIT;
+		attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		attachments[i].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		attachments[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		
+		attachmentRefs[i].attachment = i;
+		attachmentRefs[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	}
+	
+	//Describe the depth attachments
+	for ( ; i < numAttachments; ++i)
+	{
+		attachments[i].format = m_depthFormat;
+		attachments[i].samples = VK_SAMPLE_COUNT_1_BIT;
+		attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		attachments[i].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		attachments[i].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		
+		attachmentRefs[i].attachment = i;
+		attachmentRefs[i].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	}
+	
+	VkSubpassDescription subpass = 
+	{
+		0,                   //Flags
+		VK_PIPELINE_BIND_POINT_GRAPHICS,  //Pipeline bind point
+		0,                   //Input attachment count
+		nullptr,             //Input attachments
+		numColorBuffers,     //Color attachment count
+		&attachmentRefs[0],  //Color attachments
+		nullptr,             //Resolve attachment
+		enableDepth ? 	&attachmentRefs[numColorBuffers] : nullptr, //Depth buffer attachment
+		0,                   //Preserve attachment count
+		nullptr              //Preserve attachments
+	};
+	
+	out = new VulkanRenderPass();
+	
+	VkRenderPassCreateInfo render_pass_info =
+	{
+		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		nullptr,            //Reserved
+		0,                  //No flags
+		numAttachments,     //Attachment count
+		attachments.get(),  //Attachments
+		1,                  //Subpass count
+		&subpass,           //Subpasses
+		0,                  //Dependency count
+		nullptr             //Dependencies
+	};
+	
+	if (Failed( vkCreateRenderPass(m_device, &render_pass_info, nullptr, &out->m_renderPass) ))
+	{
+		SafeRelease(out);
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateRenderPass() could not create the render pass";
+		return Result::ApiError;
+	}
+	
+	
 	return Result::Success;
 }
 

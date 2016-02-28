@@ -1,7 +1,7 @@
 /**
 \file   command_buffer.h
 \author Andrew Baxter
-\date   February 27, 2016
+\date   February 28, 2016
 
 Encapsulates a command buffers (or command lists in D3D12)
 
@@ -28,8 +28,7 @@ namespace Basilisk
 		Gets this class's CRTP implementation
 		\return This class's CRTP implementation
 		*/
-		inline const Impl &GetImplementation()
-		{
+		inline const Impl &GetImplementation() {
 			return static_cast<Impl&>(*this);
 		}
 
@@ -127,10 +126,14 @@ namespace Basilisk
 
 		Result Begin(bool disposable);
 
+		void WriteBundle(const VulkanCmdBuffer &bundle);
+
 		Result End();
 
 		/**
 		Before use, Vulkan swap chains need a little more preparation
+		
+		\param[in] swapChain The swap chain to prepare
 		*/
 		void PrepareSwapChain(const VulkanSwapChain &swapChain);
 

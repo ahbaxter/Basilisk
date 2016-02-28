@@ -5,7 +5,8 @@
 
 The virtual interface with the selected graphics API
 
-\todo TOP PRIORITY: Separate rendering and present queues
+\todo Abstract render passes
+\todo Separate rendering and present queues
 \todo Look into debug/validation layers
 \todo Boot up Vulkan without a window target
 
@@ -17,6 +18,7 @@ The virtual interface with the selected graphics API
 #include "common.h"
 #include "pipeline.h"
 #include "swap_chain.h"
+#include "render_pass.h"
 #include "command_buffer.h"
 
 namespace Basilisk
@@ -33,6 +35,12 @@ namespace Basilisk
 		uint32_t deviceId;
 		std::string name;
 		//bool supportsApi;
+	};
+	
+	enum RenderPassAttachments
+	{
+		ColorAttachmentBit = 1 << 0,
+		DepthAttachmentBit = 1 << 1
 	};
 
 #ifdef _WIN32
@@ -115,6 +123,11 @@ namespace Basilisk
 		template<class CmdBuffType>
 		inline Result CreateCommandBuffer(CmdBuffType *&out, bool bundle) {
 			return GetImplementation().CreateCommandBuffer(out, bundle);
+		}
+		
+		template<class RenderPassType>
+		inline Result CreateRenderPass(RenderPassType *&out) {
+			return GetImplementation().CreateRenderPass(out);
 		}
 		
 		/**
@@ -200,9 +213,9 @@ namespace Basilisk
 		friend class VulkanInstance;
 		struct WindowSurface
 		{
-			VkSurfaceKHR surface;
 			VkSurfaceCapabilitiesKHR caps;
-			VkFormat format;
+			VkSurfaceKHR surface;
+			VkFormat colorFormat;
 			std::vector<VkPresentModeKHR> presentModes;
 		};
 
@@ -244,14 +257,26 @@ namespace Basilisk
 		*/
 		template<> Result CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out, Bounds2D<uint32_t> resolution, uint32_t numBuffers, uint32_t numSamples);
 
+		/**
+		Creates a render pass
+		
+		\param[out] out Where to store the resulting render pass
+		\param[in] numColorBuffers The number of color buffers to expect. Defaults to 1
+		\param[in] enableDepth Should we expect a depth buffer? Defaults to yes.
+		\return Details about potential failure
+		
+		\todo Customizable subpasses
+		*/
+		Result CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorBuffers = 1, bool enableDepth = true);
+
 		/** Swaps out backbuffers */
 		void Present();
 
 		/** Cleans up after itself */
 		void Release();
 
-		static constexpr uint32_t present = 0; //Queue index for present operations
-		static constexpr uint32_t render = 1;  //Queue index for render operations
+		static constexpr uint32_t render = 0; //Queue index for present operations
+		static constexpr uint32_t present = 1;  //Queue index for render operations
 		static constexpr uint32_t compute = 2; //Queue index for compute operations
 		//TODO: Are queues thread-friendly?
 
@@ -266,6 +291,8 @@ namespace Basilisk
 		VkCommandPool m_commandPool; //TODO: Multiple command pools for multithreading
 
 		WindowSurface m_windowSurface;
+		
+		VKformat m_depthFormat;
 	};
 
 
@@ -422,18 +449,18 @@ namespace Basilisk
 		*/
 		template<> Result CreateDevice<VulkanDevice>(VulkanDevice *&out, uint32_t gpuIndex);
 
-		struct GPU
+		struct GpuProperties
 		{
-			VkPhysicalDevice device;
 			VkPhysicalDeviceProperties props;
 			std::vector<VkQueueFamilyProperties> queueDescs;
 			VkPhysicalDeviceMemoryProperties memoryProps;
+			VkFormat depthFormat;
 		};
 
 	private:
 		VkInstance m_instance;
-		std::vector<GPU> m_gpus;
-
+		std::vector<GpuProperties> m_gpuProps;
+		std::vector<VkPhysicalDevice> m_gpus;
 
 		static constexpr uint32_t layerCount = 0;
 		static const char* const* layerNames;
