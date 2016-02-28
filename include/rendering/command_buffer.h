@@ -1,21 +1,27 @@
 /**
 \file   command_buffer.h
 \author Andrew Baxter
-\date   February 21, 2016
+\date   February 27, 2016
 
-Encapsulates an API-generic command buffer
-
-\todo Add Bundles
+Encapsulates a command buffers (or command lists in D3D12)
 
 */
 
 #ifndef BASILISK_COMMAND_BUFFER_H
 #define BASILISK_COMMAND_BUFFER_H
 
+#include "common.h"
+#include "swap_chain.h"
+
 namespace Basilisk
 {
+	/**
+	Uses CRTP abstraction to represent an ambiguous command buffer
+
+	\tparam Impl Sets up the Curiously Recurring Template Pattern
+	*/
 	template<class Impl>
-	class CommandBuffer abstract
+	class CmdBuffer abstract
 	{
 	public:
 		/**
@@ -28,51 +34,110 @@ namespace Basilisk
 		}
 
 		/**
-		Changes the active pipeline
-
-		\param[in] pipeline The pipeline to use. If `nullptr`, a default pipeline is used
+		Start recording commands
+		
+		\param[in] disposable 
 		\return Details about potential failure
+		*/
+		inline Result Begin(bool disposable) {
+			return GetImplementation.Begin(disposable);
+		}
+
+		/**
+		Stop recording commands
+
+		\return Details about potential failure
+		*/
+		inline Result End() {
+			return GetImplementation().End();
+		}
+
+		/**
+		Writes a bundle to the command buffer
+
+		\param[in] bundle The bundle to write
+		\return Details about potential failure
+		*/
+		inline void WriteBundle(const Impl &bundle) {
+			GetImplementation().WriteBundle(bundle);
+		}
+
+		/**
+		Changes the active graphics pipeline
+
+		\param[in] pipeline The pipeline to use
 		\tparam PipelineType Specifies which API to use, and what type of pipeline to create
 		*/
 		template<class PipelineType>
-		inline void BindPipeline(const PipelineType *pipeline) {
-			return GetImplementation().BindPipeline(pipeline);
+		inline void BindGraphicsPipeline(const PipelineType &pipeline) {
+			GetImplementation().BindGraphicsPipeline(pipeline);
 		}
+
+		/**
+		Changes the active compute pipeline
+
+		\param[in] pipeline The pipeline to use
+		\tparam PipelineType Specifies which API to use, and what type of pipeline to create
+		*/
+		template<class PipelineType>
+		inline void BindComputePipeline(const PipelineType &pipeline) {
+			GetImplementation().BindComputePipeline(pipeline);
+		}
+		
 		/**
 		Changes the active swap chain
 
-		\param[in] swapChain The swap chain to use. If `nullptr`, a default swap chain is used
+		\param[in] swapChain The swap chain to use
 		\tparam PipelineType Specifies which API to use
-
-		\todo Can you even have a "default swap chain"? What would it do?
 		*/
 		template<class SwapChainType>
-		inline void BindSwapChain(const SwapChainType *swapChain) {
-			return GetImplementation().BindSwapChain(swapChain);
+		inline void BindSwapChain(const SwapChainType &swapChain) {
+			GetImplementation().BindSwapChain(swapChain);
 		}
 
-		/**
-		Completely wipes the contents of the command list
-		\return Details about potential failure
-		*/
-		inline void Clear() {
-			return GetImplementation().Clear();
+		/** Completely wipes the contents of the command list */
+		inline void Reset() {
+			GetImplementation().Reset();
+		}
+
+		/** Cleans up after itself */
+		inline void Release() {
+			GetImplementation().Release();
 		}
 	};
 
-	class D3D12CommandBuffer : public CommandBuffer<D3D12CommandBuffer>
+	/** Implements the `CmdBuffer` interface for Direct3D 12 */
+	class D3D12CmdBuffer : public CmdBuffer<D3D12CmdBuffer>
 	{
 	public:
+		friend class D3D12Device;
 
 	private:
+		D3D12CmdBuffer();
+		~D3D12CmdBuffer() = default;
+
 		ID3D12GraphicsCommandList *m_commandList;
 	};
 
-	class VulkanCommandBuffer : public CommandBuffer<VulkanCommandBuffer>
+	/** Implements the `CmdBuffer` interface for Vulkan */
+	class VulkanCmdBuffer : public CmdBuffer<VulkanCmdBuffer>
 	{
 	public:
+		friend class VulkanDevice;
+
+		Result Begin(bool disposable);
+
+		Result End();
+
+		/**
+		Before use, Vulkan swap chains need a little more preparation
+		*/
+		void PrepareSwapChain(const VulkanSwapChain &swapChain);
 
 	private:
+		VulkanCmdBuffer();
+		~VulkanCmdBuffer() = default;
+
 		VkCommandBuffer m_commandBuffer;
 	};
 

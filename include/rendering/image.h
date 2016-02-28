@@ -1,11 +1,9 @@
 /**
 \file   image.h
 \author Andrew Baxter
-\date February 23, 2016
+\date February 27, 2016
 
-
-
-\todo Investigate usage types. How much should be specified compile-time?
+An in-progress representation of multidimentional images
 
 */
 
@@ -27,44 +25,29 @@ namespace Basilisk
 
 
 
-	class D3D12Image2D : public Image<D3D12Image2D>
+	class D3D12Image : public Image<D3D12Image>
 	{
 	public:
 
 	private:
-		D3D12Image2D();
-		~D3D12Image2D() = default;
+		D3D12Image();
+		~D3D12Image() = default;
+
+
 	};
 
-	class D3D12Image3D : public Image<D3D12Image3D>
+
+	class VulkanImage : public Image<VulkanImage>
 	{
 	public:
 
 	private:
-		D3D12Image3D();
-		~D3D12Image3D() = default;
+		VulkanImage();
+		~VulkanImage() = default;
+
+		VkImage m_image;
+		VkImageView m_view;
 	};
-
-
-
-	class VulkanImage2D : public Image<VulkanImage2D>
-	{
-	public:
-
-	private:
-		VulkanImage2D();
-		~VulkanImage2D() = default;
-	};
-
-	class VulkanImage3D : public Image<VulkanImage3D>
-	{
-	public:
-
-	private:
-		VulkanImage3D();
-		~VulkanImage3D() = default;
-	};
-
 }
 
 #endif

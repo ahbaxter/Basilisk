@@ -13,8 +13,10 @@
 
 HWND hWnd;
 const char *appName = "Basilisk";
-HINSTANCE hInstance = GetModuleHandle(NULL);
+HINSTANCE hInstance;
 constexpr bool FULL_SCREEN = false;
+
+using namespace Basilisk;
 
 /*
 LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam)
@@ -195,6 +197,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pScmdline,
 
 int main(int argc, char *argv[])
 {
+	hInstance = GetModuleHandle(NULL);
 
 	SDL_Init(SDL_INIT_VIDEO);
 
@@ -213,13 +216,33 @@ int main(int argc, char *argv[])
 	SDL_VERSION(&wmInfo.version); // initialize info structure with SDL version info
 	SDL_GetWindowWMInfo(window, &wmInfo);
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
-	HWND hwnd = wmInfo.info.win.window;
+	hWnd = wmInfo.info.win.window;
 
-
-	Basilisk::D3D12Device device;
-	if (!device.Initialize(hwnd, w, h, false, false))
+	VulkanInstance instance;
+	if (Failed( instance.Initialize({ hInstance, hWnd }, appName) ))
 	{
-		OutputDebugString(Basilisk::error.getDetails());
+		OutputDebugString(Basilisk::errorMessage);
+		return 1;
+	}
+
+	VulkanDevice *device;
+	if (Failed(instance.CreateDevice(device, 0)))
+	{
+		OutputDebugString(Basilisk::errorMessage);
+		return 0;
+	}
+
+	VulkanSwapChain *swapChain;
+	if (Failed(device->CreateSwapChain(swapChain, { 720, 480 }, 2, 1)))
+	{
+		OutputDebugString(Basilisk::errorMessage);
+		return 0;
+	}
+
+	VulkanCmdBuffer *cmdBuffer;
+	if (Failed(device->CreateCommandBuffer(cmdBuffer)))
+	{
+		OutputDebugString(Basilisk::errorMessage);
 		return 0;
 	}
 
@@ -238,9 +261,9 @@ int main(int argc, char *argv[])
 	other = std::chrono::duration<float>(0);
 	while (windowEvent.type != SDL_QUIT)
 	{
-		if (windowEvent.type == SDL_KEYDOWN)
+		/*if (windowEvent.type == SDL_KEYDOWN)
 			if (windowEvent.key.keysym.sym == SDLK_f)
-				device.setFullscreen(false);
+				device.setFullscreen(false);*/
 
 		other += std::chrono::high_resolution_clock::now() - start;
 		start = std::chrono::high_resolution_clock::now();
@@ -285,6 +308,7 @@ int main(int argc, char *argv[])
 	//OutputDebugString(sFps.c_str());
 	//OutputDebugString(" avg fps\n");
 
-	device.release();
+	device.Release();
+
 	return 0;
 }

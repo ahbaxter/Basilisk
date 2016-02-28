@@ -1,7 +1,7 @@
 /**
 \file   common.h
 \author Andrew Baxter
-\date   February 26, 2015
+\date   February 27, 2015
 
 Includes universally-required headers
 
@@ -12,6 +12,7 @@ Includes universally-required headers
 
 #include <stdint.h>
 #include <vector>
+#include <algorithm>
 
 #define WIN32_LEAN_AND_MEAN
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -61,6 +62,14 @@ namespace Basilisk
 	{
 		T width, height, depth;
 	};
+
+	template<typename T>
+	inline T Clamp(const T &val, const T &min, const T &max)
+	{
+		return std::max(
+			std::min(val, max),
+			min);
+	}
 
 
 	//For use with generic objects

@@ -1,9 +1,11 @@
 /**
 \file   swap_chain.h
 \author Andrew Baxter
-\date February 26, 2016
+\date February 27, 2016
 
 Implements swap chains in Vulkan and Direct3D 12
+
+\todo Add support for fullscreen rendering
 
 */
 
@@ -11,6 +13,7 @@ Implements swap chains in Vulkan and Direct3D 12
 #define BASILISK_SWAP_CHAIN_H
 
 #include "common.h"
+#include "image.h"
 
 namespace Basilisk
 {
@@ -31,37 +34,37 @@ namespace Basilisk
 			return static_cast<Impl&>(*this);
 		}
 
-		/**
-		Checks if vsync is enabled
-		\return `true` if vsync is enabled; `false` otherwise
-		*/
-		inline bool IsVsyncEnabled() {
-			return m_vsync;
-		}
-		/**
-		Checks if the target window is fullscreen
-		\return `true` if the appication is fullscreen; `false` otherwise
-		*/
-		inline bool IsFullscreen() {
-			return m_fullscreen;
-		}
-		/**
-		Turns vsync on or off
-		\param[in] vsync `true` to enable vsync; `false` to disable
-		*/
-		inline void SetVsyncEnabled(bool vsync) {
-			GetImplementation().SetVsyncEnabled(vsync)
-		}
-		/**
-		Turns vsync on or off
-		\param[in] vsync `true` to enable vsync; `false` to disable
-		*/
-		inline void SetFullscreenEnabled(bool fullscreen) {
-			GetImplementation().SetFullscreenEnabled(fullscreen);
-		}
+	//	/**
+	//	Checks if vsync is enabled
+	//	\return `true` if vsync is enabled; `false` otherwise
+	//	*/
+	//	inline bool IsVsyncEnabled() {
+	//		return m_vsync;
+	//	}
+	//	/**
+	//	Checks if the target window is fullscreen
+	//	\return `true` if the appication is fullscreen; `false` otherwise
+	//	*/
+	//	inline bool IsFullscreen() {
+	//		return m_fullscreen;
+	//	}
+	//	/**
+	//	Turns vsync on or off
+	//	\param[in] vsync `true` to enable vsync; `false` to disable
+	//	*/
+	//	inline void SetVsyncEnabled(bool vsync) {
+	//		GetImplementation().SetVsyncEnabled(vsync)
+	//	}
+	//	/**
+	//	Turns vsync on or off
+	//	\param[in] vsync `true` to enable vsync; `false` to disable
+	//	*/
+	//	inline void SetFullscreenEnabled(bool fullscreen) {
+	//		GetImplementation().SetFullscreenEnabled(fullscreen);
+	//	}
 
-	protected:
-		bool m_vsync, m_fullscreen;
+	//protected:
+	//	bool m_vsync, m_fullscreen;
 	};
 
 	/**
@@ -77,8 +80,8 @@ namespace Basilisk
 		~D3D12SwapChain() = default;
 
 		IDXGISwapChain3 *m_swapChain;
-		ID3D12DescriptorHeap *m_renderTargetViewHeap;
-		ID3D12Resource **m_backBufferRenderTarget;
+		ID3D12DescriptorHeap *m_renderTargetViewHeap; //No idea what this is
+		ID3D12Resource **m_backBufferRenderTarget; //Back buffers
 		uint32_t m_bufferIndex;
 	};
 
@@ -89,22 +92,17 @@ namespace Basilisk
 	{
 	public:
 		friend class VulkanDevice;
+		friend class VulkanCmdBuffer;
 
-		struct RenderTarget
-		{
-			VkImage image;
-			VkImageView view;
-		};
 	private:
-
 		VulkanSwapChain();
 		~VulkanSwapChain() = default;
 
 		VkSwapchainKHR m_swapChain;
-		VkSurfaceKHR m_windowSurface;
-		VkFormat m_format;
-		std::vector<RenderTarget> m_targets;
-		uint32_t m_numTargets;
+		std::vector<VkImage> m_backBuffers;
+		std::vector<VkImageView> m_backBufferViews;
+
+		uint32_t m_bufferIndex;
 	};
 }
 

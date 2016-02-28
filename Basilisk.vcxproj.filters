@@ -95,5 +95,8 @@
     <ClCompile Include="source\rendering\swap_chain.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="include\rendering\command_buffer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
