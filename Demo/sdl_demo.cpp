@@ -215,35 +215,36 @@ int main(int argc, char *argv[])
 	SDL_SysWMinfo wmInfo;
 	SDL_VERSION(&wmInfo.version); // initialize info structure with SDL version info
 	SDL_GetWindowWMInfo(window, &wmInfo);
+
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
 	hWnd = wmInfo.info.win.window;
 
 	VulkanInstance instance;
 	if (Failed( instance.Initialize({ hInstance, hWnd }, appName) ))
 	{
-		OutputDebugString(Basilisk::errorMessage);
+		OutputDebugString(Basilisk::errorMessage.c_str());
 		return 1;
 	}
 
 	VulkanDevice *device;
 	if (Failed(instance.CreateDevice(device, 0)))
 	{
-		OutputDebugString(Basilisk::errorMessage);
-		return 0;
+		OutputDebugString(Basilisk::errorMessage.c_str());
+		return 1;
 	}
 
 	VulkanSwapChain *swapChain;
 	if (Failed(device->CreateSwapChain(swapChain, { 720, 480 }, 2, 1)))
 	{
-		OutputDebugString(Basilisk::errorMessage);
-		return 0;
+		OutputDebugString(Basilisk::errorMessage.c_str());
+		return 1;
 	}
 
 	VulkanCmdBuffer *cmdBuffer;
 	if (Failed(device->CreateCommandBuffer(cmdBuffer)))
 	{
-		OutputDebugString(Basilisk::errorMessage);
-		return 0;
+		OutputDebugString(Basilisk::errorMessage.c_str());
+		return 1;
 	}
 
 #else
@@ -253,35 +254,20 @@ int main(int argc, char *argv[])
 	SDL_Event windowEvent;
 	unsigned long long fence = 0;
 	SDL_PollEvent(&windowEvent);
-	std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<float> begin, execute, present, other;
-	begin = std::chrono::duration<float>(0);
-	execute = std::chrono::duration<float>(0);
-	present = std::chrono::duration<float>(0);
-	other = std::chrono::duration<float>(0);
+
 	while (windowEvent.type != SDL_QUIT)
 	{
 		/*if (windowEvent.type == SDL_KEYDOWN)
 			if (windowEvent.key.keysym.sym == SDLK_f)
 				device.setFullscreen(false);*/
 
-		other += std::chrono::high_resolution_clock::now() - start;
-		start = std::chrono::high_resolution_clock::now();
 		if (device.beginFrame(fence))
 		{
-			begin += std::chrono::high_resolution_clock::now() - start;
-			start = std::chrono::high_resolution_clock::now();
 			if (device.execute(nullptr))
-			{
-				execute += std::chrono::high_resolution_clock::now() - start;
-				start = std::chrono::high_resolution_clock::now();
-
 				fence = device.present();
-
-				present += std::chrono::high_resolution_clock::now() - start;
-				start = std::chrono::high_resolution_clock::now();
 			}
 		}
+
 		//{
 		//	OutputDebugString(Basilisk::error.getDetails());
 		//	device.shutdown();
@@ -290,25 +276,7 @@ int main(int argc, char *argv[])
 		SDL_PollEvent(&windowEvent);
 	}
 
-	std::string toString = std::to_string(other.count());
-	OutputDebugString(toString.c_str());
-	OutputDebugString("\n");
-	toString = std::to_string(begin.count());
-	OutputDebugString(toString.c_str());
-	OutputDebugString("\n");
-	toString = std::to_string(execute.count());
-	OutputDebugString(toString.c_str());
-	OutputDebugString("\n");
-	toString = std::to_string(present.count());
-	OutputDebugString(toString.c_str());
-	OutputDebugString("\n");
-	//std::chrono::duration<float> secondsPassed = std::chrono::high_resolution_clock::now() - start;
-	//float fps = fence / secondsPassed.count();
-	//std::string sFps = std::to_string(fps);
-	//OutputDebugString(sFps.c_str());
-	//OutputDebugString(" avg fps\n");
-
-	device.Release();
+	device->Release();
 
 	return 0;
 }

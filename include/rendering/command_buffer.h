@@ -111,6 +111,12 @@ namespace Basilisk
 	public:
 		friend class D3D12Device;
 
+		Result Begin(bool disposable);
+
+		void WriteBundle(const VulkanCmdBuffer &bundle);
+
+		Result End();
+
 	private:
 		D3D12CmdBuffer();
 		~D3D12CmdBuffer() = default;
@@ -130,16 +136,19 @@ namespace Basilisk
 
 		Result End();
 
-		/**
-		Before use, Vulkan swap chains need a little more preparation
-		
-		\param[in] swapChain The swap chain to prepare
-		*/
-		void PrepareSwapChain(const VulkanSwapChain &swapChain);
-
 	private:
 		VulkanCmdBuffer();
 		~VulkanCmdBuffer() = default;
+
+		/**
+		Before use, many Vulkan images require extra processing in a command buffer
+
+		\param[in] image The image to modify
+		\param[in] aspectMask The aspect mask
+		\param[in] oldLayout The image's prior layout
+		\param[in] newLayout What layout to change the image to
+		*/
+		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout);
 
 		VkCommandBuffer m_commandBuffer;
 	};

@@ -1,7 +1,7 @@
 /**
 \file   image.h
 \author Andrew Baxter
-\date February 27, 2016
+\date February 28, 2016
 
 An in-progress representation of multidimentional images
 
@@ -28,6 +28,7 @@ namespace Basilisk
 	class D3D12Image : public Image<D3D12Image>
 	{
 	public:
+		friend class D3D12Device;
 
 	private:
 		D3D12Image();
@@ -40,6 +41,7 @@ namespace Basilisk
 	class VulkanImage : public Image<VulkanImage>
 	{
 	public:
+		friend class VulkanDevice;
 
 	private:
 		VulkanImage();
@@ -47,6 +49,8 @@ namespace Basilisk
 
 		VkImage m_image;
 		VkImageView m_view;
+		VkDeviceMemory m_memory;
+		VkFormat m_format;
 	};
 }
 

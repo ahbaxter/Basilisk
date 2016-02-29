@@ -86,7 +86,7 @@ void VulkanCmdBuffer::PrepareSwapChain(const VulkanSwapChain &swapChain)
 	}
 }
 
-VulkanCmdBuffer::WriteBundle(const VulkanCmdBuffer bundle)
+void VulkanCmdBuffer::WriteBundle(const VulkanCmdBuffer &bundle)
 {
-	vkCmdExecuteCommands(m_commandBuffer, 1, &bundle);
+	vkCmdExecuteCommands(m_commandBuffer, 1, &bundle.m_commandBuffer);
 }

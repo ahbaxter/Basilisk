@@ -1,9 +1,9 @@
 /**
 \file   common.h
 \author Andrew Baxter
-\date   February 27, 2015
+\date   February 28, 2015
 
-Includes universally-required headers
+Includes universally-required headers and defines some rudimentary functions
 
 */
 
@@ -14,9 +14,11 @@ Includes universally-required headers
 #include <vector>
 #include <algorithm>
 
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define VK_USE_PLATFORM_WIN32_KHR
 #define NOMINMAX // Don't let Windows define min() or max()
+#endif
 
 #include <vulkan.h>
 #include <d3d12.h>
@@ -69,6 +71,12 @@ namespace Basilisk
 		return std::max(
 			std::min(val, max),
 			min);
+	}
+
+	template<typename T>
+	inline T PowerOfTwo(const T &val)
+	{
+		return (!(val <= 0) && !(val &(val - 1))
 	}
 
 

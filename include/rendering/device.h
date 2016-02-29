@@ -1,14 +1,24 @@
 /**
 \file   device.h
 \author Andrew Baxter
-\date   February 27, 2016
+\date   February 28, 2016
 
 The virtual interface with the selected graphics API
 
-\todo Abstract render passes
-\todo Separate rendering and present queues
+\todo Further integrate image.h
+\todo Not sure if I'm properly detecting depth buffer formats
+	Almost certainly not using linear tiling right
+\todo Figure out what I'm doing with render and present queues
+\todo Pipeline layouts -- should have done this before render passes :/
+	Uniform buffers
+	Descriptors, sets, pools
+	Shaders
+	Frame buffers
+\todo Improve documentation
 \todo Look into debug/validation layers
 \todo Boot up Vulkan without a window target
+
+NOTE: Not sure if I have to change image layouts before including them as part of VkImageViewCreateInfo's, but I'm not for now
 
 */
 
@@ -20,6 +30,7 @@ The virtual interface with the selected graphics API
 #include "swap_chain.h"
 #include "render_pass.h"
 #include "command_buffer.h"
+#include "image.h"
 
 namespace Basilisk
 {
@@ -27,6 +38,7 @@ namespace Basilisk
 	Stores information about a single GPU
 
 	\todo Can Direct3D 12 check what type of device it is (discrete, integrated, etc)?
+	\todo Remove?
 	*/
 	struct PhysicalDevice
 	{
@@ -35,12 +47,6 @@ namespace Basilisk
 		uint32_t deviceId;
 		std::string name;
 		//bool supportsApi;
-	};
-	
-	enum RenderPassAttachments
-	{
-		ColorAttachmentBit = 1 << 0,
-		DepthAttachmentBit = 1 << 1
 	};
 
 #ifdef _WIN32
@@ -99,15 +105,15 @@ namespace Basilisk
 		\param[out] out Where to store the resulting swap chain
 		\param[in] resolution The resolution to use. May be ignored, depending on GPU quirks
 		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered). May be clamped to fit the GPU's capabilities
-		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off)
 		\tparam SwapChainType Specifies which API to create the swap chain for
+		\tparam CmdBufferType Must match the API set in `SwapChainType`
 		\return Details about potential failure
 
 		\todo Expand to non-Windows sytems
 		*/
-		template<class SwapChainType>
-		inline Result CreateSwapChain(SwapChainType *&out, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2, uint32_t numSamples = 1) {
-			return GetImplementation().CreateSwapChain(out, resolution, numBuffers, numSamples);
+		template<class SwapChainType, class CmdBufferType>
+		Result CreateSwapChain(SwapChainType *&out, CmdBufferType &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2) {
+			return GetImplementation().CreateSwapChain(out, cmdBuffer, resolution, numBuffers);
 		}
 
 
@@ -121,7 +127,7 @@ namespace Basilisk
 		\return Details about potential failure
 		*/
 		template<class CmdBuffType>
-		inline Result CreateCommandBuffer(CmdBuffType *&out, bool bundle) {
+		inline Result CreateCommandBuffer(CmdBuffType *&out, bool bundle = false) {
 			return GetImplementation().CreateCommandBuffer(out, bundle);
 		}
 		
@@ -162,8 +168,10 @@ namespace Basilisk
 		/**
 		Gives an error message when idiots try to create a Vulkan swap chain with a D3D12 device
 		\tparam SwapChainType Anything that isn't `D3D12SwapChain` will resolve here
+		\tparam CmdBufferType Anything that isn't `D3D12CmdBuffer` will resolve here
 		*/
-		template<class SwapChainType> Result CreateSwapChain(SwapChainType *&out, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2, uint32_t numSamples = 1) {
+		template<class SwapChainType, class CmdBufferType>
+		Result CreateSwapChain(SwapChainType *&out, CmdBufferType &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2) {
 			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type");
 		}
 		/**
@@ -174,12 +182,11 @@ namespace Basilisk
 		\param[out] out Where to store the resulting swap chain
 		\param[in] resolution The resolution to use. May be ignored, depending on GPU quirks
 		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered). May be clamped to fit the GPU's capabilities
-		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off)
 		\tparam Specifies which API to create the swap chain for
 
 		\todo Expand to non-Windows sytems
 		*/
-		template<> Result CreateSwapChain<D3D12SwapChain>(D3D12SwapChain *&out, Bounds2D<uint32_t> resolution, uint32_t numBuffers, uint32_t numSamples);
+		template<> Result CreateSwapChain<D3D12SwapChain, D3D12CmdBuffer>(D3D12SwapChain *&out, D3D12CmdBuffer &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers);
 
 		/** Swaps out backbuffers */
 		void Present();
@@ -223,7 +230,8 @@ namespace Basilisk
 		Gives an error message when idiots try to create a D3D12 pipeline with a Vulkan device
 		\tparam Anything other than `VulkanGraphicsPipeline` will resolve here
 		*/
-		template<class PipelineType> Result CreateGraphicsPipeline(PipelineType *&out) {
+		template<class PipelineType>
+		Result CreateGraphicsPipeline(PipelineType *&out) {
 			static_assert(false, "Basilisk::VulkanDevice::CreateGraphicsPipeline() is not specialized for the provided type");
 		}
 		/**
@@ -238,24 +246,35 @@ namespace Basilisk
 		/**
 		Gives an error message when idiots try to create a D3D12 swap chain with a Vulkan device
 		\tparam SwapChainType Anything that isn't `VulkanSwapChain` will resolve here
+		\tparam CmdBufferType Anything that isn't `VulkanCmdBuffer` will resolve here
 		*/
-		template<class SwapChainType> Result CreateSwapChain(SwapChainType *&out, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2, uint32_t numSamples = 1) {
+		template<class SwapChainType, class CmdBufferType>
+		Result CreateSwapChain(SwapChainType *&out, CmdBufferType &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2) {
 			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type");
 		}
 		/**
 		Partial specialization of `Device::CreateSwapChain`, working only with compatible API objects
 		
-		\warning May fall back to fewer buffers than requested, depending on hardware capabilities
-
 		\param[out] out Where to store the resulting swap chain
+		\param[in] cmdBuffer Helps to initialize the swap chain. Must be open for writing when passed.
 		\param[in] resolution The resolution to use. May be ignored, depending on GPU quirks
 		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered). May be clamped to fit the GPU's capabilities
-		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off)
-		\tparam Specifies which API to create the swap chain for
 
 		\todo Expand to non-Windows sytems
 		*/
-		template<> Result CreateSwapChain<VulkanSwapChain>(VulkanSwapChain *&out, Bounds2D<uint32_t> resolution, uint32_t numBuffers, uint32_t numSamples);
+		template<> Result CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer>
+			(VulkanSwapChain *&out, VulkanCmdBuffer &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers);
+		
+		/**
+		Creates a depth buffer
+
+		\param[out] out Where to store the resulting depth buffer
+		\param[in] cmdBuffer Helps to initialize the depth buffer. Must be open for writing when passed.
+		\param[in] resolution The resolution to use
+		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off). Must be a power of two.
+		\return Details about potential failure
+		*/
+		Result CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples);
 
 		/**
 		Creates a render pass
@@ -265,9 +284,17 @@ namespace Basilisk
 		\param[in] enableDepth Should we expect a depth buffer? Defaults to yes.
 		\return Details about potential failure
 		
-		\todo Customizable subpasses
+		\todo Customizable subpasses and input attachments
 		*/
 		Result CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorBuffers = 1, bool enableDepth = true);
+
+		/**
+		Executes pre-recorded commands stored in a command buffer
+
+		\return Details about potential failure
+		*/
+		Result ExecuteCommands(const VulkanCmdBuffer &commands);
+
 
 		/** Swaps out backbuffers */
 		void Present();
@@ -284,15 +311,19 @@ namespace Basilisk
 		VulkanDevice();
 		~VulkanDevice() = default;
 
-
+		bool MemoryTypeFromProps(uint32_t typeBits, VkFlags requirements_mask, uint32_t *typeIndex);
 
 		std::vector<VkQueue> m_queues;
 		VkDevice m_device;
-		VkCommandPool m_commandPool; //TODO: Multiple command pools for multithreading
+		VkCommandPool m_commandPools[2]; //TODO: Multiple command pools for multithreading
 
 		WindowSurface m_windowSurface;
 		
-		VKformat m_depthFormat;
+		//TODO: Just store the entire GpuProperties struct in here tomorrow
+
+		VkFormat m_depthFormat;
+		VkImageTiling m_depthTiling;
+		VkPhysicalDeviceMemoryProperties m_memoryProps;
 	};
 
 
@@ -455,6 +486,7 @@ namespace Basilisk
 			std::vector<VkQueueFamilyProperties> queueDescs;
 			VkPhysicalDeviceMemoryProperties memoryProps;
 			VkFormat depthFormat;
+			VkImageTiling depthTiling;
 		};
 
 	private:
