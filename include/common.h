@@ -74,7 +74,7 @@ namespace Basilisk
 	}
 
 	template<typename T>
-	inline T PowerOfTwo(const T &val)
+	inline bool PowerOfTwo(const T &val)
 	{
 		return (!(val <= 0) && !(val &(val - 1))
 	}

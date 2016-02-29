@@ -83,7 +83,7 @@ void VulkanCmdBuffer::SetImageLayout(VkImage image, VkImageAspectFlags aspectMas
 		1, &image_memory_barrier);
 }
 
-void VulkanCmdBuffer::WriteBundle(const VulkanCmdBuffer *bundle)
+void VulkanCmdBuffer::WriteBundle(const VulkanCmdBuffer &bundle)
 {
-	vkCmdExecuteCommands(m_commandBuffer, 1, &bundle->m_commandBuffer);
+	vkCmdExecuteCommands(m_commandBuffer, 1, &bundle.m_commandBuffer);
 }

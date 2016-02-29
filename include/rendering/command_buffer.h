@@ -1,7 +1,7 @@
 /**
 \file   command_buffer.h
 \author Andrew Baxter
-\date   February 28, 2016
+\date   February 29, 2016
 
 Encapsulates a command buffers (or command lists in D3D12)
 
@@ -57,7 +57,7 @@ namespace Basilisk
 		\param[in] bundle The bundle to write
 		\return Details about potential failure
 		*/
-		inline void WriteBundle(const Impl &bundle) {
+		inline void WriteBundle(const Impl *bundle) {
 			GetImplementation().WriteBundle(bundle);
 		}
 
@@ -65,10 +65,10 @@ namespace Basilisk
 		Changes the active graphics pipeline
 
 		\param[in] pipeline The pipeline to use
-		\tparam PipelineType Specifies which API to use, and what type of pipeline to create
+		\tparam PipelineType Specifies which API to use
 		*/
 		template<class PipelineType>
-		inline void BindGraphicsPipeline(const PipelineType &pipeline) {
+		inline void BindGraphicsPipeline(const PipelineType *pipeline) {
 			GetImplementation().BindGraphicsPipeline(pipeline);
 		}
 
@@ -76,22 +76,28 @@ namespace Basilisk
 		Changes the active compute pipeline
 
 		\param[in] pipeline The pipeline to use
-		\tparam PipelineType Specifies which API to use, and what type of pipeline to create
+		\tparam PipelineType Specifies which API to use
 		*/
 		template<class PipelineType>
-		inline void BindComputePipeline(const PipelineType &pipeline) {
+		inline void BindComputePipeline(const PipelineType *pipeline) {
 			GetImplementation().BindComputePipeline(pipeline);
 		}
 		
 		/**
-		Changes the active swap chain
+		Enables drawing commands
 
-		\param[in] swapChain The swap chain to use
-		\tparam PipelineType Specifies which API to use
+		\taparam RenderPassType Specifies which API to use
 		*/
-		template<class SwapChainType>
-		inline void BindSwapChain(const SwapChainType &swapChain) {
-			GetImplementation().BindSwapChain(swapChain);
+		template<class RenderPassType>
+		inline void BeginRenderPass(const RenderPassType *renderPass) {
+			GetImplementation().beginRenderPass(renderPass);
+		}
+
+		/**
+		Disables drawing commands
+		*/
+		inline void EndRenderPass() {
+			GetImplementation.EndRenderPass();
 		}
 
 		/** Completely wipes the contents of the command list */
@@ -113,7 +119,7 @@ namespace Basilisk
 
 		Result Begin(bool disposable);
 
-		void WriteBundle(const VulkanCmdBuffer &bundle);
+		void WriteBundle(const VulkanCmdBuffer *bundle);
 
 		Result End();
 
@@ -132,7 +138,7 @@ namespace Basilisk
 
 		Result Begin(bool disposable);
 
-		void WriteBundle(const VulkanCmdBuffer &bundle);
+		void WriteBundle(const VulkanCmdBuffer *bundle);
 
 		Result End();
 
@@ -147,8 +153,10 @@ namespace Basilisk
 		\param[in] aspectMask The aspect mask
 		\param[in] oldLayout The image's prior layout
 		\param[in] newLayout What layout to change the image to
+		\param[in] oldQueueFamilyIndex Where to the image was previously viewable from
+		\param[in] newQueueFamilyIndex Where to the image will be viewable from
 		*/
-		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout);
+		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t oldQueueFamilyIndex = VulkanDevice::render, uint32_t newQueueFamilyIndex = VulkanDevice::render);
 
 		VkCommandBuffer m_commandBuffer;
 	};

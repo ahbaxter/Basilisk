@@ -1,11 +1,12 @@
 /**
 \file   device.h
 \author Andrew Baxter
-\date   February 28, 2016
+\date   February 29, 2016
 
 The virtual interface with the selected graphics API
 
 \todo Further integrate image.h
+\todo Check for null pointers in non-final builds
 \todo Not sure if I'm properly detecting depth buffer formats
 	Almost certainly not using linear tiling right
 \todo Figure out what I'm doing with render and present queues
@@ -30,6 +31,7 @@ NOTE: Not sure if I have to change image layouts before including them as part o
 #include "swap_chain.h"
 #include "render_pass.h"
 #include "command_buffer.h"
+#include "frame_buffer.h"
 #include "image.h"
 
 namespace Basilisk
@@ -112,7 +114,7 @@ namespace Basilisk
 		\todo Expand to non-Windows sytems
 		*/
 		template<class SwapChainType, class CmdBufferType>
-		Result CreateSwapChain(SwapChainType *&out, CmdBufferType &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2) {
+		Result CreateSwapChain(SwapChainType *&out, CmdBufferType *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2) {
 			return GetImplementation().CreateSwapChain(out, cmdBuffer, resolution, numBuffers);
 		}
 
@@ -131,6 +133,14 @@ namespace Basilisk
 			return GetImplementation().CreateCommandBuffer(out, bundle);
 		}
 		
+		/**
+		Creates a render pass
+		\warning Aftercreation, Basilisk is not responsible for memory management of the resultant object
+		
+		\param[out] Where to store the resulting render pass
+		\tparam RenderPassType Specifies which API to create the render pass for
+		\return Details abot potential failure
+		*/
 		template<class RenderPassType>
 		inline Result CreateRenderPass(RenderPassType *&out) {
 			return GetImplementation().CreateRenderPass(out);
@@ -155,6 +165,7 @@ namespace Basilisk
 		/** Gives an error message when idiots try to create a Vulkan pipeline with a D3D12 device */
 		template<class PipelineType> Result CreateGraphicsPipeline(PipelineType *&out) {
 			static_assert(false, "Basilisk::D3D12Device::CreateGraphicsPipeline() is not specialized for the provided type");
+			return Result::IllegalArgument;
 		}
 		/**
 		Partial specialization of `Device::CreateGraphicsPipeline` for D3D12 graphics pipelines
@@ -173,6 +184,7 @@ namespace Basilisk
 		template<class SwapChainType, class CmdBufferType>
 		Result CreateSwapChain(SwapChainType *&out, CmdBufferType &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2) {
 			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type");
+			return Result::IllegalArgument;
 		}
 		/**
 		\brief Partial specialization of `Device::CreateSwapChain`, working only with compatible API objects
@@ -212,7 +224,7 @@ namespace Basilisk
 	/**
 	Implements the `Device` interface for Vulkan
 
-	\todo Second command pool for compute operations
+	\todo CCompute operations
 	*/
 	class VulkanDevice : public Device<VulkanDevice>
 	{
@@ -233,6 +245,7 @@ namespace Basilisk
 		template<class PipelineType>
 		Result CreateGraphicsPipeline(PipelineType *&out) {
 			static_assert(false, "Basilisk::VulkanDevice::CreateGraphicsPipeline() is not specialized for the provided type");
+			return Result::IllegalArgument;
 		}
 		/**
 		Partial specialization of `Device::CreateGraphicsPipeline`, working only with compatible API objects
@@ -249,8 +262,9 @@ namespace Basilisk
 		\tparam CmdBufferType Anything that isn't `VulkanCmdBuffer` will resolve here
 		*/
 		template<class SwapChainType, class CmdBufferType>
-		Result CreateSwapChain(SwapChainType *&out, CmdBufferType &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2) {
+		Result CreateSwapChain(SwapChainType *&out, CmdBufferType *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers = 2) {
 			static_assert(false, "Basilisk::D3D12Device::CreateSwapChain() is not specialized for the provided type");
+			return Result::IllegalArgument;
 		}
 		/**
 		Partial specialization of `Device::CreateSwapChain`, working only with compatible API objects
@@ -262,31 +276,68 @@ namespace Basilisk
 
 		\todo Expand to non-Windows sytems
 		*/
-		template<> Result CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer>
-			(VulkanSwapChain *&out, VulkanCmdBuffer &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers);
+		template<> Result CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer>(VulkanSwapChain *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers);
 		
+		/**
+		Creates a command buffer
+		\warning After creation, Basilisk is not responsible for memory management of the resultant object
+
+		\param[out] out Where to store the resulting command buffer
+		\param[in] bundle Bundles are small command buffers which can quickly be added to larger command buffers, but cannot be executed directly
+		\tparam CmdBuffType Specifies which API to create the command buffer for
+		\return Details about potential failure
+		*/
+		template<class CmdBuffType>
+		inline Result CreateCommandBuffer(CmdBuffType *&out, bool bundle = false) {
+			static_assert(false, "Basilisk::D3D12Device::CreateCommandBuffer() is not specialized for the provided type");
+			return Result::IllegalArgument;
+		}
+
+		/**
+		Creates a command buffer
+		\warning After creation, Basilisk is not responsible for memory management of the resultant object
+
+		\param[out] out Where to store the resulting command buffer
+		\param[in] bundle Bundles are small command buffers which can quickly be added to larger command buffers, but cannot be executed directly
+		\return Details about potential failure
+
+		\todo Queue index parrameter?
+		*/
+		inline Result CreateCommandBuffer<VulkanCmdBuffer>(VulkanCmdBuffer *&out, bool bundle);
+
 		/**
 		Creates a depth buffer
 
 		\param[out] out Where to store the resulting depth buffer
-		\param[in] cmdBuffer Helps to initialize the depth buffer. Must be open for writing when passed.
+		\param[in] cmdBuffer Helps to initialize the depth buffer. Must be in a render pass when passed.
 		\param[in] resolution The resolution to use
 		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off). Must be a power of two.
 		\return Details about potential failure
 		*/
-		Result CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples);
+		Result CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples);
 
 		/**
 		Creates a render pass
 		
 		\param[out] out Where to store the resulting render pass
 		\param[in] numColorBuffers The number of color buffers to expect. Defaults to 1
-		\param[in] enableDepth Should we expect a depth buffer? Defaults to yes.
+		\param[in] enableDepth Should we expect a depth buffer? Defaults to yes
 		\return Details about potential failure
 		
 		\todo Customizable subpasses and input attachments
 		*/
 		Result CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorBuffers = 1, bool enableDepth = true);
+
+		/**
+		Creates frame buffers to fit a render pass and swap chain
+
+		\param[out] out Where to store the resulting frame buffers
+		\param[in] renderPass The render pass to conform to
+		\param[in] swapChain The swap chain to link to
+		\param[in] depthBuffer The depth buffer to link to. Cannot be null
+		\return Details about potential failure
+		*/
+		Result CreateFrameBuffers(VulkanFrameBufferSet *&out, VulkanRenderPass *renderPass, VulkanSwapChain *swapChain, VulkanImageSet *depthBuffer);
 
 		/**
 		Executes pre-recorded commands stored in a command buffer
@@ -364,7 +415,7 @@ namespace Basilisk
 		Counts and stores all connected GPUs
 		\param[out] count Where to store the number of connected GPUs
 		*/
-		inline Result FindGpus(uint32_t *count) {
+		inline Result FindGpus(uint32_t *&count) {
 			return GetImplementation().FindGpus(count);
 		}
 
@@ -406,12 +457,13 @@ namespace Basilisk
 		Counts and stores all connected GPUs
 		\param[out] count Where to store the number of connected GPUs
 		*/
-		Result FindGpus(uint32_t *count);
+		Result FindGpus(uint32_t *&count);
 
 		/** Gives an error message when idiots try to create a Vulkan device with a D3D12 instance */
 		template<class DeviceType>
 		Result CreateDevice(DeviceType *&out, uint32_t gpuIndex = 0) {
 			static_assert(false, "Basilisk::D3D12Instance::CreateDevice() is not specialized for the provided type");
+			return Result::IllegalArgument;
 		}
 		
 		/**
@@ -461,12 +513,13 @@ namespace Basilisk
 		
 		\todo Check out VkPhysicalDeviceMemoryProperties
 		*/
-		Result FindGpus(uint32_t *count);
+		Result FindGpus(uint32_t *&count);
 
 		/** Gives an error message when idiots try to create a D3D12 device with a Vulkan instance */
 		template<class DeviceType>
 		Result CreateDevice(DeviceType *&out, uint32_t gpuIndex) {
 			static_assert(false, "Basilisk::VulkanInstance::CreateDevice() is not specialized for the provided type");
+			return Result::IllegalArgument;
 		}
 
 		/**

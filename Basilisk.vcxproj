@@ -23,7 +23,9 @@
     <ClInclude Include="include\common.h" />
     <ClInclude Include="include\core\task_graph.h" />
     <ClInclude Include="include\rendering\command_buffer.h" />
+    <ClInclude Include="include\rendering\frame_buffer.h" />
     <ClInclude Include="include\rendering\image.h" />
+    <ClInclude Include="include\rendering\render_pass.h" />
     <ClInclude Include="include\rendering\swap_chain.h" />
     <ClInclude Include="include\result.h" />
     <ClInclude Include="include\profiling.h" />
@@ -38,6 +40,7 @@
     <ClCompile Include="source\profiling.cpp" />
     <ClCompile Include="source\rendering\device.cpp" />
     <ClCompile Include="source\rendering\pipeline.cpp" />
+    <ClCompile Include="source\rendering\render_pass.cpp" />
     <ClCompile Include="source\rendering\swap_chain.cpp" />
     <ClCompile Include="source\result.cpp" />
   </ItemGroup>

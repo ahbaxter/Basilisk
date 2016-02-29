@@ -72,6 +72,12 @@
     <ClInclude Include="include\rendering\image.h">
       <Filter>Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="include\rendering\render_pass.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\frame_buffer.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\profiling.cpp">
@@ -96,6 +102,9 @@
       <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="include\rendering\command_buffer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\render_pass.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
   </ItemGroup>

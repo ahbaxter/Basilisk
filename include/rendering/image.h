@@ -1,7 +1,7 @@
 /**
 \file   image.h
 \author Andrew Baxter
-\date February 28, 2016
+\date   February 28, 2016
 
 An in-progress representation of multidimentional images
 
@@ -15,7 +15,7 @@ An in-progress representation of multidimentional images
 namespace Basilisk
 {
 	template<class Impl>
-	class Image abstract
+	class ImageSet abstract
 	{
 	public:
 		const inline Impl &GetImplementation() {
@@ -25,32 +25,32 @@ namespace Basilisk
 
 
 
-	class D3D12Image : public Image<D3D12Image>
+	class D3D12ImageSet : public ImageSet<D3D12ImageSet>
 	{
 	public:
 		friend class D3D12Device;
 
 	private:
-		D3D12Image();
-		~D3D12Image() = default;
+		D3D12ImageSet();
+		~D3D12ImageSet() = default;
 
 
 	};
 
 
-	class VulkanImage : public Image<VulkanImage>
+	class VulkanImageSet : public ImageSet<VulkanImageSet>
 	{
 	public:
 		friend class VulkanDevice;
 
 	private:
-		VulkanImage();
-		~VulkanImage() = default;
-
-		VkImage m_image;
-		VkImageView m_view;
-		VkDeviceMemory m_memory;
-		VkFormat m_format;
+		VulkanImageSet();
+		~VulkanImageSet() = default;
+		
+		std::vector<VkImage> m_images;
+		std::vector<VkImageView> m_views;
+		std::vector<VkDeviceMemory> m_memory;
+		std::vector<VkFormat> m_formats;
 	};
 }
 

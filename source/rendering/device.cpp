@@ -1,13 +1,12 @@
 /**
 \file   device.cpp
 \author Andrew Baxter
-\date   February 28, 2016
+\date   February 29, 2016
 
 Defines the behavior of Vulkan and D3D12 rendering backends
 
 */
 
-#include <memory> //Used for smart pointers
 #include "rendering/device.h"
 
 using namespace Basilisk;
@@ -141,7 +140,7 @@ void VulkanInstance::Release()
 	}
 }
 
-Result D3D12Instance::FindGpus(uint32_t *count)
+Result D3D12Instance::FindGpus(uint32_t *&count)
 {
 #ifndef BASILISK_FINAL_BUILD
 	if (nullptr == m_factory) //Check if Initialize() has been called
@@ -198,7 +197,7 @@ Result D3D12Instance::FindGpus(uint32_t *count)
 	return Result::Success;
 }
 
-Result VulkanInstance::FindGpus(uint32_t *count)
+Result VulkanInstance::FindGpus(uint32_t *&count)
 {
 #ifndef BASILISK_FINAL_BUILD
 	if (nullptr == m_instance) //Check if Initialize() has been called
@@ -354,7 +353,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	////Find a graphics queue which supports present
 	//
 
-	auto supportsPresent = std::make_unique<VkBool32[]>(m_gpuProps[gpuIndex].queueDescs.size());
+	std::vector<VkBool32>supportsPresent(m_gpuProps[gpuIndex].queueDescs.size());
 	for (uint32_t i = 0; i < m_gpuProps[gpuIndex].queueDescs.size(); ++i)
 	{
 		res = vkGetPhysicalDeviceSurfaceSupportKHR(m_gpus[gpuIndex], i, out->m_windowSurface.surface, &supportsPresent[i]);
@@ -411,8 +410,8 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 		return Result::ApiError;
 	}
 
-	auto surfFormats = std::make_unique <VkSurfaceFormatKHR[]>(formatCount);
-	res = vkGetPhysicalDeviceSurfaceFormatsKHR(m_gpus[gpuIndex], out->m_windowSurface.surface, &formatCount, surfFormats.get());
+	std::vector<VkSurfaceFormatKHR> surfFormats(formatCount);
+	res = vkGetPhysicalDeviceSurfaceFormatsKHR(m_gpus[gpuIndex], out->m_windowSurface.surface, &formatCount, surfFormats.data());
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -593,7 +592,7 @@ void VulkanDevice::Release() {
 }
 
 
-template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer>(VulkanSwapChain *&out, VulkanCmdBuffer &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers)
+template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer>(VulkanSwapChain *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers)
 {
 	//All prerequisites were checked in `VulkanInstance::CreateDevice()`
 	
@@ -752,7 +751,7 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer
 		}
 
 		//Set the image layout to depth stencil optimal
-		cmdBuffer.SetImageLayout(out->m_backBuffers[i],
+		cmdBuffer->SetImageLayout(out->m_backBuffers[i],
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -775,8 +774,8 @@ Result VulkanDevice::CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorB
 	//Meets all prerequisites
 
 	uint32_t numAttachments = numColorBuffers + (enableDepth ? 1 : 0);
-	auto attachments = std::make_unique<VkAttachmentDescription[]>(numAttachments);
-	auto attachmentRefs = std::make_unique<VkAttachmentReference[]>(numAttachments);
+	std::vector<VkAttachmentDescription> attachments(numAttachments);
+	std::vector<VkAttachmentReference> attachmentRefs(numAttachments);
 
 
 	uint32_t i = 0;
@@ -836,14 +835,14 @@ Result VulkanDevice::CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorB
 	VkRenderPassCreateInfo render_pass_info =
 	{
 		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		nullptr,            //Reserved
-		0,                  //No flags
-		numAttachments,     //Attachment count
-		attachments.get(),  //Attachments
-		1,                  //Subpass count
-		&subpass,           //Subpasses
-		0,                  //Dependency count
-		nullptr             //Dependencies
+		nullptr,             //Reserved
+		0,                   //No flags
+		numAttachments,      //Attachment count
+		attachments.data(),  //Attachments
+		1,                   //Subpass count
+		&subpass,            //Subpasses
+		0,                   //Dependency count
+		nullptr              //Dependencies
 	};
 	
 	if (Failed( vkCreateRenderPass(m_device, &render_pass_info, nullptr, &out->m_renderPass) ))
@@ -875,7 +874,7 @@ bool VulkanDevice::MemoryTypeFromProps(uint32_t typeBits, VkFlags requirements_m
 	return false;
 }
 
-Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples)
+Result VulkanDevice::CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples)
 {
 #ifndef BASILISK_FINAL_BUILD
 	if (0 == numSamples || numSamples > 64 || !PowerOfTwo(numSamples))
@@ -887,8 +886,12 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBu
 
 	//Meets all prerequisites
 
-	out = new VulkanImage();
-	out->m_format = m_depthFormat;
+	out = new VulkanImageSet();
+	out->m_images.resize(1);
+	out->m_views.resize(1);
+	out->m_formats.resize(1);
+	out->m_memory.resize(1);
+	out->m_formats[0] = m_depthFormat;
 	VkResult res;
 
 	//Create the image
@@ -912,7 +915,7 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBu
 		VK_IMAGE_LAYOUT_UNDEFINED  //Initial layout
 	};
 
-	res = vkCreateImage(m_device, &image_info, nullptr, &out->m_image);
+	res = vkCreateImage(m_device, &image_info, nullptr, &out->m_images[0]);
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -923,7 +926,7 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBu
 	//Determine memory requirements
 
 	VkMemoryRequirements mem_reqs;
-	vkGetImageMemoryRequirements(m_device, out->m_image, &mem_reqs);
+	vkGetImageMemoryRequirements(m_device, out->m_images[0], &mem_reqs);
 
 
 	//Allocate the memory
@@ -944,7 +947,7 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBu
 		return Result::ApiError;
 	}
 
-	res = vkAllocateMemory(m_device, &mem_alloc, NULL, &out->m_memory);
+	res = vkAllocateMemory(m_device, &mem_alloc, NULL, &out->m_memory[0]);
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -954,7 +957,7 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBu
 
 	//Bind the memory
 
-	res = vkBindImageMemory(m_device, out->m_image, out->m_memory, 0);
+	res = vkBindImageMemory(m_device, out->m_images[0], out->m_memory[0], 0);
 	if (Failed(res))
 	{
 		SafeRelease(out);
@@ -963,7 +966,7 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBu
 	}
 
 	//Set the image layout to depth stencil optimal
-	cmdBuffer.SetImageLayout(out->m_image,
+	cmdBuffer->SetImageLayout(out->m_images[0],
 		VK_IMAGE_ASPECT_DEPTH_BIT,
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -975,7 +978,7 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBu
 
 	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	view_info.pNext = nullptr;
-	view_info.image = out->m_image;
+	view_info.image = out->m_images[0];
 	view_info.format = m_depthFormat;
 	view_info.components.r = VK_COMPONENT_SWIZZLE_R;
 	view_info.components.g = VK_COMPONENT_SWIZZLE_G;
@@ -995,13 +998,48 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImage *&out, VulkanCmdBuffer &cmdBu
 		view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 	}
 
-	res = vkCreateImageView(m_device, &view_info, nullptr, &out->m_view);
+	res = vkCreateImageView(m_device, &view_info, nullptr, &out->m_views[0]);
 	if (Failed(res))
 	{
 		SafeRelease(out);
 		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer() could not create an image view for the target image";
 		return Result::ApiError;
 	}
+	
+	
+	return Result::Success;
+}
+
+Result VulkanDevice::CreateFrameBuffers(VulkanFrameBufferSet *&out, VulkanRenderPass *renderPass, VulkanSwapChain *swapChain, VulkanImageSet *depthBuffer)
+{
+	/* Adapt from SDK sample code
+	VkResult res;
+	std::vector<VkImageView> attachments;
+	attachments[1] = info.depth.view;
+
+	VkFramebufferCreateInfo fb_info = {};
+	fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	fb_info.pNext = NULL;
+	fb_info.renderPass = info.render_pass;
+	fb_info.attachmentCount = include_depth ? 2 : 1;
+	fb_info.pAttachments = attachments;
+	fb_info.width = info.width;
+	fb_info.height = info.height;
+	fb_info.layers = 1;
+
+	uint32_t i;
+
+	info.framebuffers = (VkFramebuffer *)malloc(info.swapchainImageCount *
+		sizeof(VkFramebuffer));
+
+	for (uint32_t i = 0; i < swapChain->m_backBuffers.size(); ++i)
+	{
+		attachments[0] = info.buffers[i].view;
+		res = vkCreateFramebuffer(info.device, &fb_info, NULL,
+			&info.framebuffers[i]);
+		assert(res == VK_SUCCESS);
+	}
+	*/
 }
 
 /*

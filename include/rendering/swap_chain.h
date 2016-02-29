@@ -1,7 +1,7 @@
 /**
 \file   swap_chain.h
 \author Andrew Baxter
-\date February 27, 2016
+\date   February 29, 2016
 
 Implements swap chains in Vulkan and Direct3D 12
 
@@ -87,12 +87,12 @@ namespace Basilisk
 
 	/**
 	Implements the `SwapChain` interface for Vulkan
+	Also stores a series of frame buffers
 	*/
 	class VulkanSwapChain : public SwapChain<VulkanSwapChain>
 	{
 	public:
 		friend class VulkanDevice;
-		friend class VulkanCmdBuffer;
 
 	private:
 		VulkanSwapChain();
@@ -101,6 +101,7 @@ namespace Basilisk
 		VkSwapchainKHR m_swapChain;
 		std::vector<VkImage> m_backBuffers;
 		std::vector<VkImageView> m_backBufferViews;
+		std::vector<VkFramebuffer> m_frameBuffers;
 
 		uint32_t m_bufferIndex;
 	};
