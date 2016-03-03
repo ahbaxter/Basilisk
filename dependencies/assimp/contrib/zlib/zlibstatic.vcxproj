@@ -1,0 +1,291 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGUID>{399FAB5A-E46D-41B8-B99D-1DAEBC68A158}</ProjectGUID>
+    <Keyword>Win32Proj</Keyword>
+    <Platform>Win32</Platform>
+    <ProjectName>zlibstatic</ProjectName>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="..\..\..\..\..\Property Sheets\Game (LIB).props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="..\..\..\..\..\Property Sheets\Game (LIB).props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="..\..\..\..\..\Property Sheets\Game (LIB).props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="..\..\..\..\..\Property Sheets\Game (LIB).props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Debug/</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsC</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;ASSIMP_BUILD_BOOST_WORKAROUND;NO_FSEEKO;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;ASSIMP_BUILD_BOOST_WORKAROUND;NO_FSEEKO;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Debug/</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsC</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;ASSIMP_BUILD_BOOST_WORKAROUND;NO_FSEEKO;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;ASSIMP_BUILD_BOOST_WORKAROUND;NO_FSEEKO;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Release/</AssemblerListingLocation>
+      <CompileAs>CompileAsC</CompileAs>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;ASSIMP_BUILD_BOOST_WORKAROUND;NO_FSEEKO;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;ASSIMP_BUILD_BOOST_WORKAROUND;NO_FSEEKO;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Release/</AssemblerListingLocation>
+      <CompileAs>CompileAsC</CompileAs>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;ASSIMP_BUILD_BOOST_WORKAROUND;NO_FSEEKO;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;ASSIMP_BUILD_BOOST_WORKAROUND;NO_FSEEKO;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;C:\Common\assimp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Common\assimp\contrib\zlib\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building Custom Rule C:/Common/assimp/contrib/zlib/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Common/assimp/contrib/zlib/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">setlocal
+"D:\Program Files (x86)\CMake\bin\cmake.exe" -HC:/Common/assimp "-BD:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp" --check-stamp-file "D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\CMakeFiles\generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"D:\Program Files (x86)\CMake\bin\cmake.exe" -HC:/Common/assimp "-BD:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp" --check-stamp-file "D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\CMakeFiles\generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:/Common/assimp/contrib/zlib/CMakeLists.txt;C:\Common\assimp\contrib\zlib\CMakeLists.txt;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckTypeSize.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFileCXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckFunctionExists.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckCSourceCompiles.cmake;C:\Common\assimp\contrib\zlib\zlib.pc.cmakein;C:\Common\assimp\contrib\zlib\zconf.h.cmakein;C:\Common\assimp\contrib\zlib\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:/Common/assimp/contrib/zlib/CMakeLists.txt;C:\Common\assimp\contrib\zlib\CMakeLists.txt;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckTypeSize.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFileCXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckFunctionExists.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckCSourceCompiles.cmake;C:\Common\assimp\contrib\zlib\zlib.pc.cmakein;C:\Common\assimp\contrib\zlib\zconf.h.cmakein;C:\Common\assimp\contrib\zlib\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building Custom Rule C:/Common/assimp/contrib/zlib/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Common/assimp/contrib/zlib/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">setlocal
+"D:\Program Files (x86)\CMake\bin\cmake.exe" -HC:/Common/assimp "-BD:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp" --check-stamp-file "D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\CMakeFiles\generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"D:\Program Files (x86)\CMake\bin\cmake.exe" -HC:/Common/assimp "-BD:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp" --check-stamp-file "D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\CMakeFiles\generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">C:/Common/assimp/contrib/zlib/CMakeLists.txt;C:\Common\assimp\contrib\zlib\CMakeLists.txt;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckTypeSize.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFileCXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckFunctionExists.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckCSourceCompiles.cmake;C:\Common\assimp\contrib\zlib\zlib.pc.cmakein;C:\Common\assimp\contrib\zlib\zconf.h.cmakein;C:\Common\assimp\contrib\zlib\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:/Common/assimp/contrib/zlib/CMakeLists.txt;C:\Common\assimp\contrib\zlib\CMakeLists.txt;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckTypeSize.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFileCXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckFunctionExists.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckCSourceCompiles.cmake;C:\Common\assimp\contrib\zlib\zlib.pc.cmakein;C:\Common\assimp\contrib\zlib\zconf.h.cmakein;C:\Common\assimp\contrib\zlib\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib\zconf.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\zlib.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\crc32.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\deflate.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\gzguts.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\inffast.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\inffixed.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\inflate.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\inftrees.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\trees.h" />
+    <ClInclude Include="C:\Common\assimp\contrib\zlib\zutil.h" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\adler32.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\compress.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\crc32.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\deflate.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\gzclose.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\gzlib.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\gzread.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\gzwrite.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\inflate.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\infback.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\inftrees.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\inffast.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\trees.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\uncompr.c" />
+    <ClCompile Include="C:\Common\assimp\contrib\zlib\zutil.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/ZERO_CHECK.vcxproj">
+      <Project>16FD35CE-499E-4971-9648-F4483FCB2474</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,7 @@
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/tools/assimp_view/CMakeFiles/assimp_viewer.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/CMakeFiles/uninstall.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/tools/assimp_cmd/CMakeFiles/assimp_cmd.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/code/CMakeFiles/assimp.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/contrib/zlib/CMakeFiles/ALL_BUILD.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/CMakeFiles/ZERO_CHECK.dir
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/contrib/zlib/CMakeFiles/zlibstatic.dir

@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGUID>{7204C946-E51A-45B2-A071-E0096329DC21}</ProjectGUID>
+    <Keyword>Win32Proj</Keyword>
+    <Platform>Win32</Platform>
+    <ProjectName>uninstall</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+    <PropertyGroup>
+      <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+      <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+      <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Midl>
+      <AdditionalIncludeDirectories>D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp;C:\Common\assimp\include;C:\Common\assimp\code\BoostWorkaround;C:\Common\assimp\contrib\zlib;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\contrib\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Common\assimp\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building Custom Rule C:/Common/assimp/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">setlocal
+"D:\Program Files (x86)\CMake\bin\cmake.exe" -HC:/Common/assimp "-BD:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp" --check-stamp-file "D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:/Common/assimp/CMakeLists.txt;C:\Common\assimp\CMakeLists.txt;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\3.3.1\CMakeSystem.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeSystemSpecificInitialize.cmake;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\3.3.1\CMakeCCompiler.cmake;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\3.3.1\CMakeCXXCompiler.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeGenericSystem.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\WindowsPaths.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeCInformation.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows-MSVC-C.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows-MSVC.cmake;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\3.3.1\CMakeRCCompiler.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeRCInformation.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeCXXInformation.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows-MSVC.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeCommonLanguageInclude.cmake;C:\Common\assimp\revision.h.in;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPkgConfig.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPackageHandleStandardArgs.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPackageMessage.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeParseArguments.cmake;C:\Common\assimp\cmake-modules\PrecompiledHeader.cmake;C:\Common\assimp\assimp.pc.in;C:\Common\assimp\cmake-modules\cmake_uninstall.cmake.in;C:\Common\assimp\assimp-config.cmake.in;C:\Common\assimp\assimp-config-version.cmake.in;C:\Common\assimp\cmake-modules\FindZLIB.cmake;C:\Common\assimp\cmake-modules\FindPkgMacros.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPkgConfig.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPackageHandleStandardArgs.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPackageMessage.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeParseArguments.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckTypeSize.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFileCXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckFunctionExists.cmake;C:\Common\assimp\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building Custom Rule C:/Common/assimp/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">setlocal
+"D:\Program Files (x86)\CMake\bin\cmake.exe" -HC:/Common/assimp "-BD:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp" --check-stamp-file "D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">C:/Common/assimp/CMakeLists.txt;C:\Common\assimp\CMakeLists.txt;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\3.3.1\CMakeSystem.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeSystemSpecificInitialize.cmake;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\3.3.1\CMakeCCompiler.cmake;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\3.3.1\CMakeCXXCompiler.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeSystemSpecificInformation.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeGenericSystem.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\WindowsPaths.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeCInformation.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows-MSVC-C.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows-MSVC.cmake;D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\3.3.1\CMakeRCCompiler.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeRCInformation.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeCommonLanguageInclude.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeCXXInformation.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Compiler\MSVC-CXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows-MSVC-CXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\Platform\Windows-MSVC.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeCommonLanguageInclude.cmake;C:\Common\assimp\revision.h.in;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPkgConfig.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPackageHandleStandardArgs.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPackageMessage.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeParseArguments.cmake;C:\Common\assimp\cmake-modules\PrecompiledHeader.cmake;C:\Common\assimp\assimp.pc.in;C:\Common\assimp\cmake-modules\cmake_uninstall.cmake.in;C:\Common\assimp\assimp-config.cmake.in;C:\Common\assimp\assimp-config-version.cmake.in;C:\Common\assimp\cmake-modules\FindZLIB.cmake;C:\Common\assimp\cmake-modules\FindPkgMacros.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPkgConfig.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPackageHandleStandardArgs.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\FindPackageMessage.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CMakeParseArguments.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckTypeSize.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFile.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckIncludeFileCXX.cmake;D:\Program Files (x86)\CMake\share\cmake-3.3\Modules\CheckFunctionExists.cmake;C:\Common\assimp\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\12f0914f10f0213a6b868422eb6d0cc4\uninstall.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"></Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">setlocal
+"D:\Program Files (x86)\CMake\bin\cmake.exe" -P "D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/cmake_uninstall.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/CMakeFiles/12f0914f10f0213a6b868422eb6d0cc4/uninstall.rule;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\uninstall</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"></Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">setlocal
+"D:\Program Files (x86)\CMake\bin\cmake.exe" -P "D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/cmake_uninstall.cmake"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/CMakeFiles/12f0914f10f0213a6b868422eb6d0cc4/uninstall.rule;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\uninstall</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\Users\Flynn\Documents\Visual Studio 2015\Projects\Basilisk\Assimp\CMakeFiles\uninstall" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/ZERO_CHECK.vcxproj">
+      <Project>16FD35CE-499E-4971-9648-F4483FCB2474</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

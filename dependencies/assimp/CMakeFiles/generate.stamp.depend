@@ -1,0 +1,42 @@
+# CMake generation dependency list for this directory.
+C:/Common/assimp/CMakeLists.txt
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/CMakeFiles/3.3.1/CMakeSystem.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeSystemSpecificInitialize.cmake
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/CMakeFiles/3.3.1/CMakeCCompiler.cmake
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/CMakeFiles/3.3.1/CMakeCXXCompiler.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeSystemSpecificInformation.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeGenericSystem.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/Platform/Windows.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/Platform/WindowsPaths.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeCInformation.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/Platform/Windows-MSVC-C.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/Platform/Windows-MSVC.cmake
+D:/Users/Flynn/Documents/Visual Studio 2015/Projects/Basilisk/Assimp/CMakeFiles/3.3.1/CMakeRCCompiler.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeRCInformation.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeCommonLanguageInclude.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeCXXInformation.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/Compiler/MSVC-CXX.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/Platform/Windows-MSVC-CXX.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/Platform/Windows-MSVC.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeCommonLanguageInclude.cmake
+C:/Common/assimp/revision.h.in
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/FindPkgConfig.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/FindPackageHandleStandardArgs.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/FindPackageMessage.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeParseArguments.cmake
+C:/Common/assimp/cmake-modules/PrecompiledHeader.cmake
+C:/Common/assimp/assimp.pc.in
+C:/Common/assimp/cmake-modules/cmake_uninstall.cmake.in
+C:/Common/assimp/assimp-config.cmake.in
+C:/Common/assimp/assimp-config-version.cmake.in
+C:/Common/assimp/cmake-modules/FindZLIB.cmake
+C:/Common/assimp/cmake-modules/FindPkgMacros.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/FindPkgConfig.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/FindPackageHandleStandardArgs.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/FindPackageMessage.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CMakeParseArguments.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CheckIncludeFile.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CheckTypeSize.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CheckIncludeFile.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CheckIncludeFileCXX.cmake
+D:/Program Files (x86)/CMake/share/cmake-3.3/Modules/CheckFunctionExists.cmake
