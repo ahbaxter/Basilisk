@@ -19,8 +19,6 @@ The virtual interface with the selected graphics API
 \todo Look into debug/validation layers
 \todo Boot up Vulkan without a window target
 
-NOTE: Not sure if I have to change image layouts before including them as part of VkImageViewCreateInfo's, but I'm not for now
-
 */
 
 #ifndef BASILISK_DEVICE_H
@@ -134,7 +132,7 @@ namespace Basilisk
 		
 		/**
 		Creates a frame buffer
-		\warning Aftercreation, Basilisk is not responsible for memory management of the resultant object
+		\warning After creation, Basilisk is not responsible for memory management of the resultant object
 		
 		\param[out] Where to store the resulting render pass
 		\tparam FrameBufferType Specifies which API to create the render pass for
@@ -319,20 +317,18 @@ namespace Basilisk
 		Creates a frame buffer
 		
 		\param[out] out Where to store the resulting render pass
-		\param[in] numColorBuffers The number of color buffers to expect. Defaults to 1
+		\param[in] colorFormats Which formats to create each image with. Also used to determine 
 		\param[in] enableDepth Should we expect a depth buffer? Defaults to yes
 		\return Details about potential failure
-		
-		\todo Customizable subpasses and input attachments
 		*/
-		Result CreateFrameBuffer(VulkanRenderPass *&out, uint32_t numColorBuffers = 1, bool enableDepth = true);
+		Result CreateFrameBuffer(VulkanFrameBuffer *&out, const std::vector<ImageFormat> &colorFormats, bool enableDepth = true);
 
 		/**
-		Executes pre-recorded commands stored in a command buffer
+		Executes pre-recorded commands stored in a command bundle
 
 		\return Details about potential failure
 		*/
-		Result ExecuteCommands(const VulkanCmdBuffer &commands);
+		Result ExecuteCommands(const VulkanCmdBuffer *commands);
 
 
 		/** Swaps out backbuffers */

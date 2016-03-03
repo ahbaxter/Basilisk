@@ -1,13 +1,13 @@
 /**
-\file   render_pass.cpp
+\file   frame_buffer.cpp
 \author Andrew Baxter
-\date   February 29, 2016
+\date   March 3, 2016
 
 Sets up Render pass and Frame buffers
 
 */
 
-#include "render_pass.h"
+#include "frame_buffer.h"
 
 using namespace Basilisk;
 

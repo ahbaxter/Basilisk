@@ -761,10 +761,10 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer
 	return Result::Success;
 }
 
-Result VulkanDevice::CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorBuffers, bool enableDepth)
+Result VulkanDevice::CreateFrameBuffer(VulkanFrameBuffer *&out, const std::vector<ImageFormat> &colorFormats, bool enableDepth)
 {
 #ifndef BASILISK_FINAL_BUILD
-	if (0 == numColorBuffers && !enableDepth)
+	if (0 == colorFormats.size() && !enableDepth)
 	{
 		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateRenderPass() must have at least one image attachment";
 		return Result::IllegalArgument;
@@ -773,7 +773,7 @@ Result VulkanDevice::CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorB
 
 	//Meets all prerequisites
 
-	uint32_t numAttachments = numColorBuffers + (enableDepth ? 1 : 0);
+	uint32_t numAttachments = colorFormats.size() + (enableDepth ? 1 : 0);
 	std::vector<VkAttachmentDescription> attachments(numAttachments);
 	std::vector<VkAttachmentReference> attachmentRefs(numAttachments);
 
@@ -781,7 +781,7 @@ Result VulkanDevice::CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorB
 	uint32_t i = 0;
 	
 	//Describe the color attachments
-	for ( ; i < numColorBuffers; ++i)
+	for ( ; i < colorFormats.size(); ++i)
 	{
 		attachments[i].format = m_windowSurface.colorFormat;
 		attachments[i].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -822,15 +822,15 @@ Result VulkanDevice::CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorB
 		VK_PIPELINE_BIND_POINT_GRAPHICS,  //Pipeline bind point
 		0,                   //Input attachment count
 		nullptr,             //Input attachments
-		numColorBuffers,     //Color attachment count
+		colorFormats.size(),     //Color attachment count
 		&attachmentRefs[0],  //Color attachments
 		nullptr,             //Resolve attachment
-		enableDepth ? 	&attachmentRefs[numColorBuffers] : nullptr, //Depth buffer attachment
+		enableDepth ? 	&attachmentRefs[colorFormats.size()] : nullptr, //Depth buffer attachment
 		0,                   //Preserve attachment count
 		nullptr              //Preserve attachments
 	};
 	
-	out = new VulkanRenderPass();
+	out = new VulkanFrameBuffer();
 	
 	VkRenderPassCreateInfo render_pass_info =
 	{
@@ -851,6 +851,8 @@ Result VulkanDevice::CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorB
 		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateRenderPass() could not create the render pass";
 		return Result::ApiError;
 	}
+
+
 	
 	
 	return Result::Success;
@@ -1010,8 +1012,8 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cm
 	return Result::Success;
 }
 
-Result VulkanDevice::CreateFrameBuffers(VulkanFrameBufferSet *&out, VulkanRenderPass *renderPass, VulkanSwapChain *swapChain, VulkanImageSet *depthBuffer)
-{
+//Result VulkanDevice::CreateFrameBuffers(VulkanFrameBufferSet *&out, VulkanRenderPass *renderPass, VulkanSwapChain *swapChain, VulkanImageSet *depthBuffer)
+//{
 	/* Adapt from SDK sample code
 	VkResult res;
 	std::vector<VkImageView> attachments;
@@ -1040,7 +1042,7 @@ Result VulkanDevice::CreateFrameBuffers(VulkanFrameBufferSet *&out, VulkanRender
 		assert(res == VK_SUCCESS);
 	}
 	*/
-}
+//}
 
 /*
 Result D3D12Device::Initialize(HWND window, Bounds2D<uint32_t> resolution, bool fullscreen, bool vsync)
