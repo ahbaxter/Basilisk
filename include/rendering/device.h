@@ -29,7 +29,6 @@ NOTE: Not sure if I have to change image layouts before including them as part o
 #include "common.h"
 #include "pipeline.h"
 #include "swap_chain.h"
-#include "render_pass.h"
 #include "command_buffer.h"
 #include "frame_buffer.h"
 #include "image.h"
@@ -134,16 +133,16 @@ namespace Basilisk
 		}
 		
 		/**
-		Creates a render pass
+		Creates a frame buffer
 		\warning Aftercreation, Basilisk is not responsible for memory management of the resultant object
 		
 		\param[out] Where to store the resulting render pass
-		\tparam RenderPassType Specifies which API to create the render pass for
+		\tparam FrameBufferType Specifies which API to create the render pass for
 		\return Details abot potential failure
 		*/
-		template<class RenderPassType>
-		inline Result CreateRenderPass(RenderPassType *&out) {
-			return GetImplementation().CreateRenderPass(out);
+		template<class FrameBufferType>
+		inline Result CreateFrameBuffer(FrameBufferType *&out) {
+			return GetImplementation().CreateFrameBuffer(out);
 		}
 		
 		/**
@@ -317,7 +316,7 @@ namespace Basilisk
 		Result CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples);
 
 		/**
-		Creates a render pass
+		Creates a frame buffer
 		
 		\param[out] out Where to store the resulting render pass
 		\param[in] numColorBuffers The number of color buffers to expect. Defaults to 1
@@ -326,18 +325,7 @@ namespace Basilisk
 		
 		\todo Customizable subpasses and input attachments
 		*/
-		Result CreateRenderPass(VulkanRenderPass *&out, uint32_t numColorBuffers = 1, bool enableDepth = true);
-
-		/**
-		Creates frame buffers to fit a render pass and swap chain
-
-		\param[out] out Where to store the resulting frame buffers
-		\param[in] renderPass The render pass to conform to
-		\param[in] swapChain The swap chain to link to
-		\param[in] depthBuffer The depth buffer to link to. Cannot be null
-		\return Details about potential failure
-		*/
-		Result CreateFrameBuffers(VulkanFrameBufferSet *&out, VulkanRenderPass *renderPass, VulkanSwapChain *swapChain, VulkanImageSet *depthBuffer);
+		Result CreateFrameBuffer(VulkanRenderPass *&out, uint32_t numColorBuffers = 1, bool enableDepth = true);
 
 		/**
 		Executes pre-recorded commands stored in a command buffer

@@ -1,9 +1,9 @@
 /**
 \file   frame_buffer.h
 \author Andrew Baxter
-\date   February 29, 2016
+\date   March 3, 2016
 
-Encapsulates a Vulkan frame buffer
+Encapsulates a Vulkan frame buffer, with its own render pass
 
 \todo Check if D3D12 has an equivalent -- probably does
 */
@@ -15,20 +15,18 @@ Encapsulates a Vulkan frame buffer
 
 namespace Basilisk
 {
-	class VulkanFrameBufferSet
+	class VulkanFrameBuffer
 	{
 	public:
 		friend class VulkanDevice;
 
-		inline size_t Count() {
-			return m_frameBuffers.size();
-		}
-
 	private:
-		VulkanFrameBufferSet() = default;
-		~VulkanFrameBufferSet() = default;
+		VulkanFrameBuffer() = default;
+		~VulkanFrameBuffer() = default;
 
-		std::vector<VkFramebuffer> m_frameBuffers;
+		VkFramebuffer m_frameBuffer;
+		VkRenderPass m_renderPass;
+		VkImageSet m_images;
 	};
 }
 
