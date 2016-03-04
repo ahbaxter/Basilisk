@@ -204,60 +204,36 @@ namespace Basilisk
 		ASTC12x12UNormBlock,
 		ASTC12x12SRGBBlock
 	};
-	
-	template<class Impl>
-	class ImageSet abstract
-	{
-	public:
-		const inline Impl &GetImplementation() {
-			return static_cast<Impl&>(*this);
-		}
-		
-		inline uint32_t Count() {
-			return GetImplementation().Count();
-		}
-		
-		inline Result LoadFromFile(const std::string &filename) {
-			return GetImplementation().LoadFromFile(filename);
-		}
-		
-		inline Result LoadFromData(uint32_t size, unsigned char *bytes) {
-			return GetImplementation().LoadFromData(size, bytes);
-		}
-	};
 
-
-
-	class D3D12ImageSet : public ImageSet<D3D12ImageSet>
+	struct D3D12Image
 	{
 	public:
 		friend class D3D12Device;
 
 	private:
-		D3D12ImageSet();
-		~D3D12ImageSet() = default;
+		D3D12Image();
+		~D3D12Image() = default;
 
 
 	};
 
 
-	class VulkanImageSet : public ImageSet<VulkanImageSet>
+	struct VulkanImage
 	{
 	public:
 		friend class VulkanDevice;
 
-		inline uint32_t Count() {
-			return m_images.size();
-		}
+		static Result LoadFromFile(VkImage out, const std::string &filename, VkFormat format);
+		static Result LoadFromData(VkImage out, const unsigned char *bytes, VkFormat format);
 	private:
-		VulkanImageSet();
-		~VulkanImageSet() = default;
+		VulkanImage();
+		~VulkanImage() = default;
 		
-		std::vector<VkImage> m_images;
-		std::vector<VkImageView> m_views;
-		std::vector<VkDeviceMemory> m_memory;
-		std::vector<VkFormat> m_formats;
-		//std::vctor<VkSampler> m_samplers
+		VkImage m_image;
+		VkImageView m_view;
+		VkDeviceMemory m_memory;
+		VkFormat m_format;
+		VkSampler m_sampler;
 	};
 }
 

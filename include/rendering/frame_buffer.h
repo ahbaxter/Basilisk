@@ -26,7 +26,12 @@ namespace Basilisk
 
 		VkFramebuffer m_frameBuffer;
 		VkRenderPass m_renderPass;
-		VkImageSet m_images;
+		
+		std::vector<VkImage> m_images;
+		std::vector<VkImageView> m_views;
+		std::vector<VkDeviceMemory> m_memory;
+		std::vector<VkFormat> m_format;
+		std::vector<VkSampler> m_samplers
 	};
 }
 
