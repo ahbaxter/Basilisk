@@ -1,11 +1,10 @@
 /**
 \file   device.h
 \author Andrew Baxter
-\date   February 29, 2016
+\date   March 4, 2016
 
 The virtual interface with the selected graphics API
 
-\todo Further integrate image.h
 \todo Check for null pointers in non-final builds
 \todo Not sure if I'm properly detecting depth buffer formats
 	Almost certainly not using linear tiling right
@@ -15,7 +14,6 @@ The virtual interface with the selected graphics API
 	Descriptors, sets, pools
 	Shaders
 	Frame buffers
-\todo Improve documentation
 \todo Look into debug/validation layers
 \todo Boot up Vulkan without a window target
 
@@ -311,7 +309,7 @@ namespace Basilisk
 		\param[in] numSamples Number of samples in hardware-level antialiasing. Defaults to 1 (off). Must be a power of two.
 		\return Details about potential failure
 		*/
-		Result CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples);
+		Result CreateDepthBuffer(VulkanImage<1> *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples);
 
 		/**
 		Creates a frame buffer
@@ -354,7 +352,7 @@ namespace Basilisk
 
 		WindowSurface m_windowSurface;
 		
-		//TODO: Just store the entire GpuProperties struct in here tomorrow
+		//TODO: Just store the entire GpuProperties struct in here
 
 		VkFormat m_depthFormat;
 		VkImageTiling m_depthTiling;

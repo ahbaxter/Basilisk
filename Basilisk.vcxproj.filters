@@ -78,6 +78,9 @@
     <ClInclude Include="include\rendering\frame_buffer.h">
       <Filter>Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="include\initializers.h">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\profiling.cpp">
@@ -101,11 +104,14 @@
     <ClCompile Include="source\rendering\swap_chain.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="include\rendering\command_buffer.cpp">
-      <Filter>Rendering</Filter>
-    </ClCompile>
     <ClCompile Include="source\rendering\render_pass.cpp">
       <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\command_buffer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\initializers.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

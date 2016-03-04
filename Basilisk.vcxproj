@@ -22,6 +22,7 @@
     <ClInclude Include="include\basilisk.h" />
     <ClInclude Include="include\common.h" />
     <ClInclude Include="include\core\task_graph.h" />
+    <ClInclude Include="include\initializers.h" />
     <ClInclude Include="include\rendering\command_buffer.h" />
     <ClInclude Include="include\rendering\frame_buffer.h" />
     <ClInclude Include="include\rendering\image.h" />
@@ -34,10 +35,11 @@
     <ClInclude Include="include\rendering\scene.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="include\rendering\command_buffer.cpp" />
     <ClCompile Include="source\common.cpp" />
     <ClCompile Include="source\core\task_graph.cpp" />
+    <ClCompile Include="source\initializers.cpp" />
     <ClCompile Include="source\profiling.cpp" />
+    <ClCompile Include="source\rendering\command_buffer.cpp" />
     <ClCompile Include="source\rendering\device.cpp" />
     <ClCompile Include="source\rendering\pipeline.cpp" />
     <ClCompile Include="source\rendering\render_pass.cpp" />

@@ -1,7 +1,7 @@
 /**
 \file   image.h
 \author Andrew Baxter
-\date   February 28, 2016
+\date   March 4, 2016
 
 An in-progress representation of multidimentional images
 
@@ -25,7 +25,7 @@ namespace Basilisk
 		B5G6R5UNormPack16,
 		R5G5B5A1UNormPack16,
 		B5G5R5A1UNormPack16,
-		A1B5G5R5UNormPack16
+		A1B5G5R5UNormPack16,
 		R8UNorm,
 		R8SNorm,
 		R8UScaled,
@@ -98,8 +98,8 @@ namespace Basilisk
 		R16G16SNorm,
 		R16G16UScaled,
 		R16G16SScaled,
-		R16G16UInt
-		R16G16SIng,
+		R16G16UInt,
+		R16G16SInt,
 		R16G16SFloat,
 		R16G16B16UNorm,
 		R16G16B16SNorm,
@@ -218,22 +218,24 @@ namespace Basilisk
 	};
 
 
+	template<uint32_t count>
 	struct VulkanImage
 	{
 	public:
 		friend class VulkanDevice;
-
-		static Result LoadFromFile(VkImage out, const std::string &filename, VkFormat format);
-		static Result LoadFromData(VkImage out, const unsigned char *bytes, VkFormat format);
+		
+		static Result LoadFromFile(VkImage out, VkDevice device, const std::string &filename, VkFormat format);
+		static Result LoadFromData(VkImage out, VkDevice device, const unsigned char *bytes, VkFormat format);
+		
 	private:
 		VulkanImage();
 		~VulkanImage() = default;
 		
-		VkImage m_image;
-		VkImageView m_view;
-		VkDeviceMemory m_memory;
-		VkFormat m_format;
-		VkSampler m_sampler;
+		std::array<VkImage, count> m_images;
+		std::array<VkImageView, count> m_views;
+		std::array<VkDeviceMemory, count> m_memory;
+		std::array<VkFormat, count> m_formats;
+		std::array<VkSampler, count> m_samplers;
 	};
 }
 

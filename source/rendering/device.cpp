@@ -1,13 +1,14 @@
 /**
 \file   device.cpp
 \author Andrew Baxter
-\date   February 29, 2016
+\date   March 4, 2016
 
 Defines the behavior of Vulkan and D3D12 rendering backends
 
 */
 
 #include "rendering/device.h"
+#include "initializers.h"
 
 using namespace Basilisk;
 
@@ -291,6 +292,11 @@ template<> Result D3D12Instance::CreateDevice<D3D12Device>(D3D12Device *&out, ui
 		Basilisk::errorMessage = "Basilisk::D3D12Instance::CreateDevice() was called before the instance was successfully initialized";
 		return Result::IllegalState;
 	}
+	else if (nullptr == out)
+	{
+		Basilisk::errorMessage = "Basilisk::D3D12Instance::CreateDevice()::out must not be a null pointer";
+		return Result::IllegalArgument;
+	}
 #endif
 
 	//Meets all prerequisites
@@ -314,6 +320,11 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	{
 		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice() was called before the instance was successfully initialized";
 		return Result::IllegalState;
+	}
+	else if (nullptr == out)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanInstance::CreateDevice()::out must not be a null pointer";
+		return Result::IllegalArgument;
 	}
 #endif
 	if (VK_VERSION_MAJOR(apiVersion) >= VK_VERSION_MAJOR(m_gpuProps[gpuIndex].props.apiVersion))
@@ -522,13 +533,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	//
 
 	//Rendering queue
-	VkCommandPoolCreateInfo render_pool_info =
-	{
-		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-		nullptr,                                          //Reserved
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,  //Command buffers created from this pool can be reset
-		presentQueueIndex                                 //All command buffers from this pool must be submitted to the render queue
-	};
+	VkCommandPoolCreateInfo render_pool_info = Init<VkCommandPoolCreateInfo>::Base(renderQueueIndex);
 
 	res = vkCreateCommandPool(out->m_device, &render_pool_info, nullptr, &out->m_commandPools[VulkanDevice::render]);
 	if (Failed(res))
@@ -539,13 +544,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	}
 
 	//Presentation queue
-	VkCommandPoolCreateInfo present_pool_info =
-	{
-		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-		nullptr,                                          //Reserved
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,  //Command buffers created from this pool can be reset
-		presentQueueIndex                                 //All command buffers from this pool must be submitted to the present queue
-	};
+	VkCommandPoolCreateInfo present_pool_info = Init<VkCommandPoolCreateInfo>::Base(presentQueueIndex);
 
 	res = vkCreateCommandPool(out->m_device, &present_pool_info, nullptr, &out->m_commandPools[VulkanDevice::present]);
 	if (Failed(res))
@@ -575,8 +574,9 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 D3D12Device::D3D12Device() : m_device(nullptr), m_commandQueue(nullptr), m_commandAllocator(nullptr) {
 }
 
-VulkanDevice::VulkanDevice() : m_device(nullptr) {
+VulkanDevice::VulkanDevice() : m_device(nullptr), m_depthFormat(VK_FORMAT_UNDEFINED), m_depthTiling(VK_IMAGE_TILING_OPTIMAL) {
 	m_windowSurface = { };
+	m_memoryProps = { };
 }
 
 void D3D12Device::Release() {
@@ -594,7 +594,20 @@ void VulkanDevice::Release() {
 
 template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer>(VulkanSwapChain *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers)
 {
-	//All prerequisites were checked in `VulkanInstance::CreateDevice()`
+#ifndef BASILISK_FINAL_BUILD
+	if (nullptr == out)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateSwapChain()::out must not be a null pointer";
+		return Result::IllegalArgument;
+	}
+	else if (nullptr == cmdBuffer)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateSwapChain()::cmdBuffer must not be a null pointer";
+		return Result::IllegalArgument;
+	}
+#endif
+
+	//Meets all prerequisites
 	
 	//
 	////Calculate the swap chain's resolution (may differ from the `resolution` argument)
@@ -661,7 +674,7 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer
 		0,                                 //No flags
 		m_windowSurface.surface,           //Target surface
 		numBuffers,                        //Number of back buffers
-		m_windowSurface.colorFormat,            //Surface format
+		m_windowSurface.colorFormat,       //Surface format
 		VK_COLORSPACE_SRGB_NONLINEAR_KHR,  //Color space
 		swapChainRes,                      //Resolution
 		1,                                 //Image layers
@@ -711,36 +724,9 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer
 	////Create views for each back buffer
 	//
 
-	VkComponentMapping components =
-	{
-		VK_COMPONENT_SWIZZLE_R,
-		VK_COMPONENT_SWIZZLE_G,
-		VK_COMPONENT_SWIZZLE_B,
-		VK_COMPONENT_SWIZZLE_A
-	};
-
-	VkImageSubresourceRange range =
-	{
-		0,  //Aspect mask
-		0,  //Base mip level
-		1,  //Level count
-		0,  //Base array layer
-		1   //Layer count
-	};
-
 	for (uint32_t i = 0; i < out->m_backBuffers.size(); ++i)
 	{
-		VkImageViewCreateInfo color_image_view =
-		{
-			VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-			nullptr,                      //Reserved
-			0,                            //No flags
-			out->m_backBuffers[i],        //Image
-			VK_IMAGE_VIEW_TYPE_2D,        //Image view type
-			m_windowSurface.colorFormat,  //Image format
-			components,                   //Swizzle RGBA components
-			range                         //Subresource range
-		};
+		VkImageViewCreateInfo color_image_view = Init<VkImageViewCreateInfo>::Texture2D(out->m_backBuffers[i], m_windowSurface.colorFormat);
 
 		res = vkCreateImageView(m_device, &color_image_view, nullptr, &out->m_backBufferViews[i]);
 		if (Failed(res))
@@ -764,7 +750,12 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer
 Result VulkanDevice::CreateFrameBuffer(VulkanFrameBuffer *&out, const std::vector<ImageFormat> &colorFormats, bool enableDepth)
 {
 #ifndef BASILISK_FINAL_BUILD
-	if (0 == colorFormats.size() && !enableDepth)
+	if (nullptr == out)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer()::out must not be a null pointer";
+		return Result::IllegalArgument;
+	}
+	else if (0 == colorFormats.size() && !enableDepth)
 	{
 		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateRenderPass() must have at least one image attachment";
 		return Result::IllegalArgument;
@@ -876,10 +867,20 @@ bool VulkanDevice::MemoryTypeFromProps(uint32_t typeBits, VkFlags requirements_m
 	return false;
 }
 
-Result VulkanDevice::CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples)
+Result VulkanDevice::CreateDepthBuffer(VulkanImage<1> *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples)
 {
 #ifndef BASILISK_FINAL_BUILD
-	if (0 == numSamples || numSamples > 64 || !PowerOfTwo(numSamples))
+	if (nullptr == out)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer()::out must not be a null pointer";
+		return Result::IllegalArgument;
+	}
+	else if (nullptr == cmdBuffer)
+	{
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer()::cmdBuffer must not be a null pointer";
+		return Result::IllegalArgument;
+	}
+	else if (0 == numSamples || numSamples > 64 || !PowerOfTwo(numSamples))
 	{
 		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer()::numSamples must be a power of two between 1 and 64";
 		return Result::IllegalArgument;
@@ -888,34 +889,14 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cm
 
 	//Meets all prerequisites
 
-	out = new VulkanImageSet();
-	out->m_images.resize(1);
-	out->m_views.resize(1);
-	out->m_formats.resize(1);
-	out->m_memory.resize(1);
+	out = new VulkanImage<1>();
 	out->m_formats[0] = m_depthFormat;
 	VkResult res;
 
 	//Create the image
 
-	VkImageCreateInfo image_info =
-	{
-		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		nullptr,                   //Reserved
-		0,                         //Flags
-		VK_IMAGE_TYPE_2D,          //Image type
-		m_depthFormat,             //Format
-		{resolution.width, resolution.height},           //Extent
-		1,                         //Mip levels
-		1,                         //Array layers
-		static_cast<VkSampleCountFlagBits>(numSamples),  //Sample count
-		m_depthTiling,             //Tiling
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,     //Usage
-		VK_SHARING_MODE_EXCLUSIVE, //Sharing mode
-		0,                         //Queue family index count
-		nullptr,                   //Queue family indices
-		VK_IMAGE_LAYOUT_UNDEFINED  //Initial layout
-	};
+	VkImageCreateInfo image_info = Init<VkImageCreateInfo>::DepthStencil(resolution, m_depthFormat);
+	image_info.tiling = m_depthTiling;
 
 	res = vkCreateImage(m_device, &image_info, nullptr, &out->m_images[0]);
 	if (Failed(res))
@@ -925,13 +906,13 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cm
 		return Result::ApiError;
 	}
 
-	//Determine memory requirements
+	//Determine memory requirements for the image
 
 	VkMemoryRequirements mem_reqs;
 	vkGetImageMemoryRequirements(m_device, out->m_images[0], &mem_reqs);
 
 
-	//Allocate the memory
+	//Allocate the memory for the image data
 
 	VkMemoryAllocateInfo mem_alloc =
 	{
@@ -957,13 +938,13 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cm
 		return Result::ApiError;
 	}
 
-	//Bind the memory
+	//Zero out the memory
 
 	res = vkBindImageMemory(m_device, out->m_images[0], out->m_memory[0], 0);
 	if (Failed(res))
 	{
 		SafeRelease(out);
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer() could not bind depth buffer memory";
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer() could not zero out the depth buffer's initial memory";
 		return Result::ApiError;
 	}
 
@@ -976,29 +957,7 @@ Result VulkanDevice::CreateDepthBuffer(VulkanImageSet *&out, VulkanCmdBuffer *cm
 	
 	//Create image view
 
-	VkImageViewCreateInfo view_info = { };
-
-	view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	view_info.pNext = nullptr;
-	view_info.image = out->m_images[0];
-	view_info.format = m_depthFormat;
-	view_info.components.r = VK_COMPONENT_SWIZZLE_R;
-	view_info.components.g = VK_COMPONENT_SWIZZLE_G;
-	view_info.components.b = VK_COMPONENT_SWIZZLE_B;
-	view_info.components.a = VK_COMPONENT_SWIZZLE_A;
-	view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	view_info.subresourceRange.baseMipLevel = 0;
-	view_info.subresourceRange.levelCount = 1;
-	view_info.subresourceRange.baseArrayLayer = 0;
-	view_info.subresourceRange.layerCount = 1;
-	view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	view_info.flags = 0;
-
-	if (m_depthFormat == VK_FORMAT_D16_UNORM_S8_UINT ||
-		m_depthFormat == VK_FORMAT_D24_UNORM_S8_UINT ||
-		m_depthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT) {
-		view_info.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-	}
+	VkImageViewCreateInfo view_info = Init<VkImageViewCreateInfo>::DepthStencil(out->m_images[0], m_depthFormat);
 
 	res = vkCreateImageView(m_device, &view_info, nullptr, &out->m_views[0]);
 	if (Failed(res))

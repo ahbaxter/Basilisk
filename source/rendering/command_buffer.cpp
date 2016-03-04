@@ -62,6 +62,7 @@ void VulkanCmdBuffer::SetImageLayout(VkImage image, VkImageAspectFlags aspectMas
 		1   //Layer count
 	};
 
+	//TODO: Depth buffer attachments
 	VkImageMemoryBarrier image_memory_barrier =
 	{
 		VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
