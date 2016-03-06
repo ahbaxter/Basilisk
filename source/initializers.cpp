@@ -1,7 +1,7 @@
 /**
 \file   initializers.cpp
 \author Andrew Baxter
-\date   March 4, 2016
+\date   March 5, 2016
 
 Implements the default initializers declared in `initializers.h`
 
@@ -146,7 +146,7 @@ VkImageCreateInfo Init<VkImageCreateInfo>::CubeMap(uint32_t sideLength, VkFormat
 
 VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Base()
 {
-	return{
+	return {
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 		nullptr,                      //Reserved
 		0,                            //Flags
@@ -171,7 +171,7 @@ VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Base()
 
 VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Texture1D(VkImage image, VkFormat format, uint32_t arrayLayers, uint32_t baseArrayLayer, uint32_t mipLevels, uint32_t baseMipLevel)
 {
-	return{
+	return {
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 		nullptr,                      //Reserved
 		0,                            //Flags
@@ -196,7 +196,7 @@ VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Texture1D(VkImage image, VkFo
 
 VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Texture2D(VkImage image, VkFormat format, uint32_t arrayLayers, uint32_t baseArrayLayer, uint32_t mipLevels, uint32_t baseMipLevel)
 {
-	return{
+	return {
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 		nullptr,                      //Reserved
 		0,                            //Flags
@@ -221,7 +221,7 @@ VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Texture2D(VkImage image, VkFo
 
 VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Texture3D(VkImage image, VkFormat format, uint32_t mipLevels, uint32_t baseMipLevel)
 {
-	return{
+	return {
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 		nullptr,                      //Reserved
 		0,                            //Flags
@@ -246,7 +246,7 @@ VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Texture3D(VkImage image, VkFo
 
 VkImageViewCreateInfo Init<VkImageViewCreateInfo>::CubeMap(VkImage image, VkFormat format, uint32_t arrayLayers, uint32_t baseArrayLayer, uint32_t mipLevels, uint32_t baseMipLevel)
 {
-	return{
+	return {
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 		nullptr,                      //Reserved
 		0,                            //Flags
@@ -271,12 +271,12 @@ VkImageViewCreateInfo Init<VkImageViewCreateInfo>::CubeMap(VkImage image, VkForm
 
 VkImageViewCreateInfo Init<VkImageViewCreateInfo>::DepthStencil(VkImage image, VkFormat format)
 {
-	return{
+	return {
 		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 		nullptr,                      //Reserved
 		0,                            //Flags
 		image,                        //Image handle
-		VK_IMAGE_VIEW_TYPE_2D, //Image view type
+		VK_IMAGE_VIEW_TYPE_2D,        //Image view type
 		format,                       //Format
 		{
 			VK_COMPONENT_SWIZZLE_R,   //Everything is
@@ -298,7 +298,28 @@ VkImageViewCreateInfo Init<VkImageViewCreateInfo>::DepthStencil(VkImage image, V
 
 #pragma region VkSamplerCreateInfo
 
-
+VkSamplerCreateInfo Init<VkSamplerCreateInfo>::Base()
+{
+	return {
+		VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		nullptr,             //Reserved
+		0,                   //Flags: reserved
+		VK_FILTER_LINEAR,    //Mag filter
+		VK_FILTER_LINEAR,    //Min filter
+		VK_SAMPLER_MIPMAP_MODE_LINEAR, //Mipmap mode
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, //Address mode U
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, //Address mode V
+		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, //Address mode W
+		0.0f,                //Mip lod bias
+		VK_FALSE,            //Enable anistropy
+		0,                   //Max anistopy
+		VK_FALSE,            //Enable compare
+		VK_COMPARE_OP_NEVER, //Compare operation,
+		0.0f,                //Min lod
+		0.0f,                //Max lod
+		VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE //Border color
+	};
+}
 
 #pragma endregion
 
@@ -311,6 +332,114 @@ VkCommandPoolCreateInfo Init<VkCommandPoolCreateInfo>::Base(uint32_t queueFamily
 		nullptr,                                          //Reserved
 		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,  //Command buffers created from this pool can be reset manually
 		queueFamilyIndex                                  //All command buffers from this pool must be submitted to this queue
+	};
+}
+
+#pragma endregion
+
+#pragma region VkAttachmentDescription
+
+VkAttachmentDescription Init<VkAttachmentDescription>::Color(VkFormat format)
+{
+	return {
+		0, //No flags
+		format, //Format
+		VK_SAMPLE_COUNT_1_BIT, //Sample count
+		VK_ATTACHMENT_LOAD_OP_CLEAR, //Load operation
+		VK_ATTACHMENT_STORE_OP_STORE, //Store operation
+		VK_ATTACHMENT_LOAD_OP_DONT_CARE, //Stencil load operation
+		VK_ATTACHMENT_STORE_OP_DONT_CARE, //Stencil store operation
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, //Initial layout
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //Final layout
+	};
+}
+
+VkAttachmentDescription Init<VkAttachmentDescription>::DepthStencil(VkFormat format)
+{
+	return{
+		0, //No flags
+		format, //Format
+		VK_SAMPLE_COUNT_1_BIT, //Sample count
+		VK_ATTACHMENT_LOAD_OP_CLEAR, //Load operation
+		VK_ATTACHMENT_STORE_OP_STORE, //Store operation
+		VK_ATTACHMENT_LOAD_OP_CLEAR, //Stencil load operation
+		VK_ATTACHMENT_STORE_OP_STORE, //Stencil store operation
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, //Initial layout
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL //Final layout
+	};
+}
+
+
+#pragma endregion
+
+#pragma region VkSubpassDescription
+
+VkSubpassDescription Init<VkSubpassDescription>::Base()
+{
+	return {
+		0,        //Flags
+		VK_PIPELINE_BIND_POINT_GRAPHICS,  //Pipeline bind point
+		0,        //Input attachment count
+		nullptr,  //Input attachments
+		0,        //Color attachment count
+		nullptr,  //Color attachments
+		nullptr,  //Resolve attachment
+		nullptr,  //Depth buffer attachment
+		0,        //Preserve attachment count
+		nullptr   //Preserve attachments
+	};
+}
+
+#pragma endregion
+
+#pragma region VkRenderPassCreateInfo
+
+VkRenderPassCreateInfo Init<VkRenderPassCreateInfo>::Base()
+{
+	return {
+		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		nullptr,  //Reserved
+		0,        //No flags
+		0,        //Attachment count
+		nullptr,  //Attachments
+		0,        //Subpass count
+		nullptr,  //Subpasses
+		0,        //Dependency count
+		nullptr   //Dependencies
+	};
+}
+
+#pragma endregion
+
+#pragma region VkFramebufferCreateInfo
+
+VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Base()
+{
+	return {
+		VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+		nullptr,        //Reserved
+		0,              //No flags: reserved
+		VK_NULL_HANDLE, //Render pass
+		0,              //Attachment count
+		nullptr,        //Attachments
+		0,              //Width
+		0,              //Height
+		1               //Layers
+	};
+}
+
+VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Create(VkRenderPass renderPass, Bounds2D<uint32_t> resolution, const std::vector<VkImageView> &attachments)
+{
+	return {
+		VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+		nullptr,             //Reserved
+		0,                   //No flags: reserved
+		renderPass,          //Render pass
+		attachments.size(),  //Attachment count
+		attachments.data(),  //Attachments
+		resolution.width,    //Width
+		resolution.height,   //Height
+		1                    //Layers
 	};
 }
 

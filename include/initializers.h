@@ -1,7 +1,7 @@
 /**
 \file   initializers.h
 \author Andrew Baxter
-\date   March 4, 2016
+\date   March 5, 2016
 
 Provides default initializers for common D3D12 and Vulkan objects
 
@@ -68,28 +68,79 @@ namespace Basilisk
 		Assumes:
 			Allows manual reset
 		*/
-		static VkCommandPoolCreateInfo Base(uint32_t queueFamilyIndex);
+		static VkCommandPoolCreateInfo Create(uint32_t queueFamilyIndex);
 	};
 
-	
-	//UNFINISHED:
-	
 	template<> struct Init<VkSamplerCreateInfo>
 	{
-		static VkSamplerCreateInfo Base();
+		/**
+		Assumes:
+			Linear texel filtering
+			Linear mipmap filtering
+			Samples clamped to border
+			No mipmap LOD bias
+			No anisotropy
+			No compare operations
+			Min and max LOD of 0
+			Opaque white border
+		*/
+		static VkSamplerCreateInfo Default();
+		static VkSamplerCreateInfo Create(VkFilter filter = VK_FILTER_LINEAR, VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR, VkCompareOp = VK_COMPARE_OP_NEVER);
 	};
 
-	template<> struct Init<VkRenderPassBeginInfo>
+	template<> struct Init<VkAttachmentDescription>
 	{
-		static VkRenderPassBeginInfo Base();
+		static VkAttachmentDescription Color(VkFormat format);
+		static VkAttachmentDescription DepthStencil(VkFormat format);
+	};
+
+	template<> struct Init<VkMemoryAllocateInfo>
+	{
+		/**
+		Does not provide:
+			Allocation size
+			Memory type index
+		*/
+		static VkMemoryAllocateInfo Base();
+		static VkMemoryAllocateInfo Create(VkDeviceSize allocationSize, uint32_t memoryTypeIndex);
+	};
+
+	template<> struct Init<VkSubpassDescription>
+	{
+		/**
+		Assumes:
+			Graphics pipeline bind point
+			Absolutely no attachments
+		*/
+		static VkSubpassDescription Base();
+	};
+
+	template<> struct Init<VkRenderPassCreateInfo>
+	{
+		/**
+		Assumes:
+			Absolutely no attachmentes
+			No subpasses
+			No dependencies
+		*/
+		static VkRenderPassCreateInfo Base();
 	};
 
 	template<> struct Init<VkFramebufferCreateInfo>
 	{
-		template<uint32_t NumAttachments>
-		static VkFramebufferCreateInfo Base(VkRenderPass renderPass, Bounds2D<uint32_t> resolution, const std::array<VkImageView, NumAttachments> attachments);
+		/**
+		Assumes:
+			Single-layer
+		Does not supply:
+			Render pass
+			Resolution
+			Attachments
+		*/
+		static VkFramebufferCreateInfo Base();
+		static VkFramebufferCreateInfo Create(VkRenderPass renderPass, Bounds2D<uint32_t> resolution, const std::vector<VkImageView> &attachments);
 	};
 
+	//UNFINISHED:
 	template<> struct Init<VkCommandBufferAllocateInfo>
 	{
 		static VkCommandBufferAllocateInfo Base();
@@ -99,10 +150,6 @@ namespace Basilisk
 	{
 		static VkCommandBufferBeginInfo Base();
 	};
-
-	//VkMemoryAllocateInfo?
-
-	*/
 }
 
 #endif

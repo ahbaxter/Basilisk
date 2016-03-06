@@ -113,5 +113,8 @@
     <ClCompile Include="source\initializers.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="source\rendering\frame_buffer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

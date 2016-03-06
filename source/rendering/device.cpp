@@ -1,7 +1,7 @@
 /**
 \file   device.cpp
 \author Andrew Baxter
-\date   March 4, 2016
+\date   March 5, 2016
 
 Defines the behavior of Vulkan and D3D12 rendering backends
 
@@ -261,14 +261,8 @@ Result VulkanInstance::FindGpus(uint32_t *&count)
 			VkFormatProperties formatProps;
 			vkGetPhysicalDeviceFormatProperties(m_gpus[i], format, &formatProps);
 			
-			if (formatProps.linearTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-			{ //Ideally, we get the highest format with the most efficient tiling method
-				m_gpuProps[i].depthFormat = format;
-				m_gpuProps[i].depthTiling = VK_IMAGE_TILING_LINEAR;
-				break;
-			}
-			else if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-			{ //But we can settle for an implementation-specific tiling method if necessary
+			if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+			{
 				m_gpuProps[i].depthFormat = format;
 				m_gpuProps[i].depthTiling = VK_IMAGE_TILING_OPTIMAL;
 				break;
@@ -533,7 +527,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	//
 
 	//Rendering queue
-	VkCommandPoolCreateInfo render_pool_info = Init<VkCommandPoolCreateInfo>::Base(renderQueueIndex);
+	VkCommandPoolCreateInfo render_pool_info = Init<VkCommandPoolCreateInfo>::Create(renderQueueIndex);
 
 	res = vkCreateCommandPool(out->m_device, &render_pool_info, nullptr, &out->m_commandPools[VulkanDevice::render]);
 	if (Failed(res))
@@ -544,7 +538,7 @@ template<> Result VulkanInstance::CreateDevice<VulkanDevice>(VulkanDevice *&out,
 	}
 
 	//Presentation queue
-	VkCommandPoolCreateInfo present_pool_info = Init<VkCommandPoolCreateInfo>::Base(presentQueueIndex);
+	VkCommandPoolCreateInfo present_pool_info = Init<VkCommandPoolCreateInfo>::Create(presentQueueIndex);
 
 	res = vkCreateCommandPool(out->m_device, &present_pool_info, nullptr, &out->m_commandPools[VulkanDevice::present]);
 	if (Failed(res))
@@ -591,8 +585,7 @@ void VulkanDevice::Release() {
 	}
 }
 
-
-template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer>(VulkanSwapChain *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numBuffers)
+template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer>(VulkanSwapChain *&out, VulkanCmdBuffer *setup, Bounds2D<uint32_t> resolution, uint32_t numBuffers)
 {
 #ifndef BASILISK_FINAL_BUILD
 	if (nullptr == out)
@@ -600,7 +593,7 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer
 		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateSwapChain()::out must not be a null pointer";
 		return Result::IllegalArgument;
 	}
-	else if (nullptr == cmdBuffer)
+	else if (nullptr == setup)
 	{
 		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateSwapChain()::cmdBuffer must not be a null pointer";
 		return Result::IllegalArgument;
@@ -737,17 +730,17 @@ template<> Result VulkanDevice::CreateSwapChain<VulkanSwapChain, VulkanCmdBuffer
 		}
 
 		//Set the image layout to depth stencil optimal
-		cmdBuffer->SetImageLayout(out->m_backBuffers[i],
+		setup->SetImageLayout(out->m_backBuffers[i],
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_LAYOUT_UNDEFINED,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	}
 
 
 	return Result::Success;
 }
 
-Result VulkanDevice::CreateFrameBuffer(VulkanFrameBuffer *&out, const std::vector<ImageFormat> &colorFormats, bool enableDepth)
+Result VulkanDevice::CreateFrameBuffer(VulkanFrameBuffer *&out, Bounds2D<uint32_t> resolution, const std::vector<ImageFormat> &colorFormats, bool enableDepth)
 {
 #ifndef BASILISK_FINAL_BUILD
 	if (nullptr == out)
@@ -764,88 +757,140 @@ Result VulkanDevice::CreateFrameBuffer(VulkanFrameBuffer *&out, const std::vecto
 
 	//Meets all prerequisites
 
+	//Preparations...
+	out = new VulkanFrameBuffer();
+	out->m_size = resolution;
+
 	uint32_t numAttachments = colorFormats.size() + (enableDepth ? 1 : 0);
-	std::vector<VkAttachmentDescription> attachments(numAttachments);
+	out->Allocate(numAttachments);
+	std::vector<VkAttachmentDescription> attachmentDescs(numAttachments);
 	std::vector<VkAttachmentReference> attachmentRefs(numAttachments);
 
+	uint32_t i;
 
-	uint32_t i = 0;
-	
-	//Describe the color attachments
-	for ( ; i < colorFormats.size(); ++i)
-	{
-		attachments[i].format = m_windowSurface.colorFormat;
-		attachments[i].samples = VK_SAMPLE_COUNT_1_BIT;
-		attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachments[i].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		attachments[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		
-		attachmentRefs[i].attachment = i;
-		attachmentRefs[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	//Create and store the images used in the frame buffer
+	VkImageCreateInfo image_create_info = Init<VkImageCreateInfo>::Texture2D(resolution, VK_FORMAT_UNDEFINED, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	for (i = 0; i < colorFormats.size(); ++i)
+	{ //Color attachment
+		image_create_info.format = static_cast<VkFormat>(colorFormats[i]);
+		if (Failed( vkCreateImage(m_device, &image_create_info, nullptr, &out->m_images[i]) ))
+		{
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not create all color images";
+			return Result::ApiError;
+		}
+	}
+	for (; i < numAttachments; ++i)
+	{ //Depth attachment
+		image_create_info.format = static_cast<VkFormat>(colorFormats[i]);
+		image_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		image_create_info.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		if (Failed( vkCreateImage(m_device, &image_create_info, nullptr, &out->m_images[i]) ))
+		{
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not create all depth images";
+			return Result::ApiError;
+		}
 	}
 	
-	//Describe the depth attachments
-	for ( ; i < numAttachments; ++i)
-	{
-		attachments[i].format = m_depthFormat;
-		attachments[i].samples = VK_SAMPLE_COUNT_1_BIT;
-		attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachments[i].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		attachments[i].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		
-		attachmentRefs[i].attachment = i;
-		attachmentRefs[i].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	//Allocate and store device memory for the images
+	VkMemoryAllocateInfo memAlloc = Init<VkMemoryAllocateInfo>::Base();
+	VkMemoryRequirements memReqs;
+	for (i = 0; i < numAttachments; ++i)
+	{ //Does not need to be split up between color and depth stencil attachments
+		vkGetImageMemoryRequirements(m_device, out->m_images[i], &memReqs);
+		memAlloc.allocationSize = memReqs.size;
+		if (!MemoryTypeFromProps(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memAlloc.memoryTypeIndex))
+		{
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not determine appropriate memory type for all images";
+			return Result::ApiError;
+		}
+		if (Failed( vkAllocateMemory(m_device, &memAlloc, nullptr, &out->m_memory[i]) ))
+		{
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not allocate memory for all images";
+			return Result::ApiError;
+		}
+		if (Failed( vkBindImageMemory(m_device, out->m_images[i], out->m_memory[i], 0) ))
+		{
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not bind memory for all images";
+			return Result::ApiError;
+		}
 	}
-	
-	//
-	////Create the render pass
-	//
 
-	VkSubpassDescription subpass = 
-	{
-		0,                   //Flags
-		VK_PIPELINE_BIND_POINT_GRAPHICS,  //Pipeline bind point
-		0,                   //Input attachment count
-		nullptr,             //Input attachments
-		colorFormats.size(),     //Color attachment count
-		&attachmentRefs[0],  //Color attachments
-		nullptr,             //Resolve attachment
-		enableDepth ? 	&attachmentRefs[colorFormats.size()] : nullptr, //Depth buffer attachment
-		0,                   //Preserve attachment count
-		nullptr              //Preserve attachments
-	};
+	//Create and store the image views
+	VkImageViewCreateInfo view_create_info = Init<VkImageViewCreateInfo>::Texture2D(VK_NULL_HANDLE, VK_FORMAT_UNDEFINED);
+	for (i = 0; i < colorFormats.size(); ++i)
+	{ //Color attachment
+		view_create_info.image = out->m_images[i];
+		view_create_info.format = static_cast<VkFormat>(colorFormats[i]);
+		if (Failed( vkCreateImageView(m_device, &view_create_info, nullptr, &out->m_views[i]) ))
+		{
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not create all color image views";
+			return Result::ApiError;
+		}
+	}
+	for (; i < numAttachments; ++i)
+	{ //Depth attachment
+		view_create_info.image = out->m_images[i];
+		view_create_info.format = static_cast<VkFormat>(m_depthFormat);
+		view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		if (Failed( vkCreateImageView(m_device, &view_create_info, nullptr, &out->m_views[i]) ))
+		{
+			SafeRelease(out);
+			Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not create all the depth stencil image view";
+			return Result::ApiError;
+		}
+	}
+
+	//Create the attachment descriptions, and store the formats
+	for (i = 0; colorFormats.size(); ++i)
+	{ //Color attachment
+		attachmentDescs[i] = Init<VkAttachmentDescription>::Color(static_cast<VkFormat>(colorFormats[i]));
+		attachmentRefs[i] = { i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+		out->m_formats[i] = static_cast<VkFormat>(colorFormats[i]);
+	}
+	for (; i < numAttachments; ++i)
+	{ //Depth attachment
+		attachmentDescs[i] = Init<VkAttachmentDescription>::DepthStencil(m_depthFormat);
+		attachmentRefs[i] = { i, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+		out->m_formats[i] = m_depthFormat;
+	}
+
+	//Create the render pass
+	VkSubpassDescription subpassDesc = Init<VkSubpassDescription>::Base();
+	subpassDesc.colorAttachmentCount = colorFormats.size();
+	subpassDesc.pColorAttachments = &attachmentRefs[0];
+	if (enableDepth)
+		subpassDesc.pDepthStencilAttachment = &attachmentRefs[colorFormats.size() - 1]; //The last attachment is depth
 	
-	out = new VulkanFrameBuffer();
 	
-	VkRenderPassCreateInfo render_pass_info =
-	{
-		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		nullptr,             //Reserved
-		0,                   //No flags
-		numAttachments,      //Attachment count
-		attachments.data(),  //Attachments
-		1,                   //Subpass count
-		&subpass,            //Subpasses
-		0,                   //Dependency count
-		nullptr              //Dependencies
-	};
+	VkRenderPassCreateInfo rp_create_info = Init<VkRenderPassCreateInfo>::Base();
+	rp_create_info.attachmentCount = numAttachments;
+	rp_create_info.pAttachments = attachmentDescs.data();
+	rp_create_info.subpassCount = 1;
+	rp_create_info.pSubpasses = &subpassDesc;
 	
-	if (Failed( vkCreateRenderPass(m_device, &render_pass_info, nullptr, &out->m_renderPass) ))
+	if (Failed( vkCreateRenderPass(m_device, &rp_create_info, nullptr, &out->m_renderPass) ))
 	{
 		SafeRelease(out);
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateRenderPass() could not create the render pass";
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not create the render pass";
+		return Result::ApiError;
+	}
+
+	VkFramebufferCreateInfo fb_create_info = Init<VkFramebufferCreateInfo>::Create(out->m_renderPass, resolution, out->m_views);
+	
+	if (Failed(vkCreateFramebuffer(m_device, &fb_create_info, nullptr, &out->m_frameBuffer)))
+	{
+		SafeRelease(out);
+		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateFrameBuffer() could not create the frame buffer";
 		return Result::ApiError;
 	}
 
 
-	
-	
 	return Result::Success;
 }
 
@@ -866,142 +911,6 @@ bool VulkanDevice::MemoryTypeFromProps(uint32_t typeBits, VkFlags requirements_m
 	//No memory types matched; return failure
 	return false;
 }
-
-Result VulkanDevice::CreateDepthBuffer(VulkanImage<1> *&out, VulkanCmdBuffer *cmdBuffer, Bounds2D<uint32_t> resolution, uint32_t numSamples)
-{
-#ifndef BASILISK_FINAL_BUILD
-	if (nullptr == out)
-	{
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer()::out must not be a null pointer";
-		return Result::IllegalArgument;
-	}
-	else if (nullptr == cmdBuffer)
-	{
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer()::cmdBuffer must not be a null pointer";
-		return Result::IllegalArgument;
-	}
-	else if (0 == numSamples || numSamples > 64 || !PowerOfTwo(numSamples))
-	{
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer()::numSamples must be a power of two between 1 and 64";
-		return Result::IllegalArgument;
-	}
-#endif
-
-	//Meets all prerequisites
-
-	out = new VulkanImage<1>();
-	out->m_formats[0] = m_depthFormat;
-	VkResult res;
-
-	//Create the image
-
-	VkImageCreateInfo image_info = Init<VkImageCreateInfo>::DepthStencil(resolution, m_depthFormat);
-	image_info.tiling = m_depthTiling;
-
-	res = vkCreateImage(m_device, &image_info, nullptr, &out->m_images[0]);
-	if (Failed(res))
-	{
-		SafeRelease(out);
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer() could not create the target image";
-		return Result::ApiError;
-	}
-
-	//Determine memory requirements for the image
-
-	VkMemoryRequirements mem_reqs;
-	vkGetImageMemoryRequirements(m_device, out->m_images[0], &mem_reqs);
-
-
-	//Allocate the memory for the image data
-
-	VkMemoryAllocateInfo mem_alloc =
-	{
-		VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-		nullptr,        //Reserved
-		mem_reqs.size,  //Allocation size
-		0               //Memory type index
-	};
-
-	//Use the memory properties to determine the type of memory required
-	if (!MemoryTypeFromProps(mem_reqs.memoryTypeBits, 0, &mem_alloc.memoryTypeIndex))
-	{
-		SafeRelease(out);
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer() could not determine the type of memory required by the target image";
-		return Result::ApiError;
-	}
-
-	res = vkAllocateMemory(m_device, &mem_alloc, NULL, &out->m_memory[0]);
-	if (Failed(res))
-	{
-		SafeRelease(out);
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer() could not allocate memory for the target image";
-		return Result::ApiError;
-	}
-
-	//Zero out the memory
-
-	res = vkBindImageMemory(m_device, out->m_images[0], out->m_memory[0], 0);
-	if (Failed(res))
-	{
-		SafeRelease(out);
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer() could not zero out the depth buffer's initial memory";
-		return Result::ApiError;
-	}
-
-	//Set the image layout to depth stencil optimal
-	cmdBuffer->SetImageLayout(out->m_images[0],
-		VK_IMAGE_ASPECT_DEPTH_BIT,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-	
-	//Create image view
-
-	VkImageViewCreateInfo view_info = Init<VkImageViewCreateInfo>::DepthStencil(out->m_images[0], m_depthFormat);
-
-	res = vkCreateImageView(m_device, &view_info, nullptr, &out->m_views[0]);
-	if (Failed(res))
-	{
-		SafeRelease(out);
-		Basilisk::errorMessage = "Basilisk::VulkanDevice::CreateDepthBuffer() could not create an image view for the target image";
-		return Result::ApiError;
-	}
-	
-	
-	return Result::Success;
-}
-
-//Result VulkanDevice::CreateFrameBuffers(VulkanFrameBufferSet *&out, VulkanRenderPass *renderPass, VulkanSwapChain *swapChain, VulkanImageSet *depthBuffer)
-//{
-	/* Adapt from SDK sample code
-	VkResult res;
-	std::vector<VkImageView> attachments;
-	attachments[1] = info.depth.view;
-
-	VkFramebufferCreateInfo fb_info = {};
-	fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	fb_info.pNext = NULL;
-	fb_info.renderPass = info.render_pass;
-	fb_info.attachmentCount = include_depth ? 2 : 1;
-	fb_info.pAttachments = attachments;
-	fb_info.width = info.width;
-	fb_info.height = info.height;
-	fb_info.layers = 1;
-
-	uint32_t i;
-
-	info.framebuffers = (VkFramebuffer *)malloc(info.swapchainImageCount *
-		sizeof(VkFramebuffer));
-
-	for (uint32_t i = 0; i < swapChain->m_backBuffers.size(); ++i)
-	{
-		attachments[0] = info.buffers[i].view;
-		res = vkCreateFramebuffer(info.device, &fb_info, NULL,
-			&info.framebuffers[i]);
-		assert(res == VK_SUCCESS);
-	}
-	*/
-//}
 
 /*
 Result D3D12Device::Initialize(HWND window, Bounds2D<uint32_t> resolution, bool fullscreen, bool vsync)

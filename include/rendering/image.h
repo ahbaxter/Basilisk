@@ -1,7 +1,7 @@
 /**
 \file   image.h
 \author Andrew Baxter
-\date   March 4, 2016
+\date   March 5, 2016
 
 An in-progress representation of multidimentional images
 
@@ -219,7 +219,7 @@ namespace Basilisk
 
 
 	template<uint32_t count>
-	struct VulkanImage
+	struct VulkanImageSet
 	{
 	public:
 		friend class VulkanDevice;
@@ -228,15 +228,18 @@ namespace Basilisk
 		static Result LoadFromData(VkImage out, VkDevice device, const unsigned char *bytes, VkFormat format);
 		
 	private:
-		VulkanImage();
-		~VulkanImage() = default;
+		VulkanImageSet();
+		~VulkanImageSet() = default;
 		
 		std::array<VkImage, count> m_images;
 		std::array<VkImageView, count> m_views;
 		std::array<VkDeviceMemory, count> m_memory;
 		std::array<VkFormat, count> m_formats;
 		std::array<VkSampler, count> m_samplers;
+		Bounds3D<uint32_t> m_size;
 	};
+
+	typedef VulkanImageSet<1> VulkanImage;
 }
 
 #endif

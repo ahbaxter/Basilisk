@@ -41,6 +41,7 @@
     <ClCompile Include="source\profiling.cpp" />
     <ClCompile Include="source\rendering\command_buffer.cpp" />
     <ClCompile Include="source\rendering\device.cpp" />
+    <ClCompile Include="source\rendering\frame_buffer.cpp" />
     <ClCompile Include="source\rendering\pipeline.cpp" />
     <ClCompile Include="source\rendering\render_pass.cpp" />
     <ClCompile Include="source\rendering\swap_chain.cpp" />

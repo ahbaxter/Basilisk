@@ -1,11 +1,11 @@
 /**
 \file   frame_buffer.h
 \author Andrew Baxter
-\date   March 3, 2016
+\date   March 5, 2016
 
 Encapsulates a Vulkan frame buffer, with its own render pass
 
-\todo Check if D3D12 has an equivalent -- probably does
+\todo Check if D3D12 has an equivalent -- sure it does
 */
 
 #ifndef BASILISK_FRAME_BUFFER_H
@@ -19,19 +19,20 @@ namespace Basilisk
 	{
 	public:
 		friend class VulkanDevice;
-
 	private:
 		VulkanFrameBuffer() = default;
 		~VulkanFrameBuffer() = default;
 
-		VkFramebuffer m_frameBuffer;
-		VkRenderPass m_renderPass;
-		
+		void Allocate(uint32_t size);
 		std::vector<VkImage> m_images;
 		std::vector<VkImageView> m_views;
 		std::vector<VkDeviceMemory> m_memory;
-		std::vector<VkFormat> m_format;
-		std::vector<VkSampler> m_samplers
+		std::vector<VkFormat> m_formats;
+
+		VkFramebuffer m_frameBuffer;
+		VkRenderPass m_renderPass;
+		
+		Bounds2D<uint32_t> m_size;
 	};
 }
 
