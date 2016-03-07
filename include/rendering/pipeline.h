@@ -1,7 +1,7 @@
 /**
 \file   pipeline.h
 \author Andrew Baxter
-\date   February 19, 2015
+\date   March 6, 2015
 
 Controls shader pipelines and (eventually) compute operations
 
@@ -19,9 +19,8 @@ namespace Basilisk
 {
 	
 	/**
-	\brief The size and type of a shader's input component
-	Does not track the number of components
-	*/
+	The size and type of a shader's input component
+	* /
 	enum class InputFormat : uint8_t
 	{
 		Unknown = 0,
@@ -186,7 +185,7 @@ namespace Basilisk
 		SInt8_4x4,
 		UNorm8_4x4,
 		SNorm8_4x4,
-	};
+	}; */
 
 	/**
 	A direct mirror of Vulkan's `VkShaderStageFlagBits` structure
@@ -202,20 +201,6 @@ namespace Basilisk
 		Compute = 1 << 5,
 		AllGraphics = Vertex | TesselationControl | TesselationEvaluation | Geometry | Fragment,
 		All = 0x7FFFFFFF
-	};
-	
-	template<class Impl>
-	class Shader abstract
-	{
-	public:
-		/**
-		Gets this class's CRTP implementation
-		\return This class's CRTP implementation
-		*/
-		inline const Impl &GetImplementation() {
-			return static_cast<Impl&>(*this);
-		}
-
 	};
 	
 
@@ -237,54 +222,6 @@ namespace Basilisk
 		*/
 		inline const Impl &GetImplementation() {
 			return static_cast<Impl&>(*this);
-		}
-
-		/**
-		Loads in a shader from source code
-		\param[in] text The GLSL/HLSL source code
-		\param[in] stage The pipeline stage to add the shader to
-		*/
-		inline Result AddShaderFromSource(const std::string &text, ShaderStage stage) {
-			return GetImplementation().AddShaderFromSource(text, stage);
-		}
-		/**
-		Loads in a shader from a local file
-		\param[in] filename The location of the GLSL/HLSL source code
-		\param[in] stage The pipeline stage to add the shader to
-		*/
-		inline Result AddShaderFromFile(const std::string &filename, ShaderStage stage) {
-			return GetImplementation().AddShaderFromFile(filename, stage);
-		}
-		/**
-		Lets the engine know about a per-vertex attribute
-		\param[in] name The name of the in-shader variable name
-		\param[in] format The data format of the variable
-		\param[in] count The number of components, if the variable is a vector type
-
-		\todo Return offset?
-		*/
-		inline Result MapAttribute(const std::string &name, InputFormat format, uint8_t count = 1) {
-			return GetImplementation().MapAttribute(name, format, count);
-		}
-		/**
-		Lets the engine know about a uniform variable
-		\param[in] name The name of the in-shader variable name
-		\param[in] format The data format of the variable
-		\param[in] count The number of components, if the variable is a vector type
-
-		\todo Return offset?
-		*/
-		inline Result MapUniform(const std::string &name, InputFormat format, uint8_t count = 1) {
-			return GetImplementation().MapUniform(name, format, count);
-		}
-		/**
-		\brief Compiles the shaders into a fully baked pipeline
-		\warning `AddShader`, `MapAttribute`, and `MapUniform` will fail after `Compile` has been called
-
-		\return Details about potential failure
-		*/
-		inline Result Compile() {
-			return GetImplementation().Compile();
 		}
 
 		/**
@@ -340,7 +277,8 @@ namespace Basilisk
 		*/
 		~VulkanGraphicsPipeline() = default;
 		
-		VkPipeline m_pipeline; //A Vulkan pipeline object
+		VkPipeline m_pipeline;
+		VkPipelineLayout m_layout;
 	};
 }
 

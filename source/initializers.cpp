@@ -1,15 +1,72 @@
 /**
 \file   initializers.cpp
 \author Andrew Baxter
-\date   March 5, 2016
+\date   March 6, 2016
 
 Implements the default initializers declared in `initializers.h`
 
 */
 
+#include <fstream>
+#include <assert.h>
+#include <memory>
 #include "initializers.h"
 
 using namespace Basilisk;
+
+char *ReadBinaryFile(const std::string &filename, size_t *sizeOut)
+{
+#ifndef BASILISK_FINAL_BUILD
+	if (nullptr == sizeOut)
+	{
+		Basilisk::errorMessage = "ReadBinaryFile()::sizeOut must not be a null pointer";
+		assert("ReadBinaryFile()::sizeOut must not be a null pointer" && false);
+	}
+#endif
+	//Open the file
+	std::ifstream reader(filename, std::ios::in | std::ios::binary);
+	if (!reader)
+	{
+		Basilisk::errorMessage = "ReadBinaryFile() could not open " + filename;
+		*sizeOut = 0;
+		return nullptr;
+	}
+
+	//Get size of file
+	std::streampos start = reader.tellg();
+	reader.seekg(0, std::ios::end);
+	*sizeOut = reader.tellg() - start;
+
+	//Read from the file
+	char *data = new char[*sizeOut];
+	reader.seekg(start);
+	reader.get(data, *sizeOut);
+	reader.close();
+
+	return data;
+}
+
+std::string ReadTextFile(const std::string &filename)
+{
+	//Open the file
+	std::ifstream reader(filename, std::ios::in);
+	if (!reader.is_open())
+	{
+		Basilisk::errorMessage = "ReadTextFile() could not open " + filename;
+		return "";
+	}
+
+	//Read from the file
+	std::string contents, line = "";
+	while (!reader.eof())
+	{
+		getline(reader, line);
+		contents.append(line + "\n");
+	}
+	reader.close();
+
+	return contents;
+}
 
 #pragma region VkImageCreateInfo
 
@@ -120,8 +177,7 @@ VkImageCreateInfo Init<VkImageCreateInfo>::DepthStencil(Bounds2D<uint32_t> dimen
 
 VkImageCreateInfo Init<VkImageCreateInfo>::CubeMap(uint32_t sideLength, VkFormat format, VkImageUsageFlags usage, VkImageLayout initialLayout, uint32_t arrayLayers, uint32_t mipLevels)
 {
-	return
-	{
+	return {
 		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		nullptr,                    //Reserved
 		VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, //Flags
@@ -298,7 +354,7 @@ VkImageViewCreateInfo Init<VkImageViewCreateInfo>::DepthStencil(VkImage image, V
 
 #pragma region VkSamplerCreateInfo
 
-VkSamplerCreateInfo Init<VkSamplerCreateInfo>::Base()
+VkSamplerCreateInfo Init<VkSamplerCreateInfo>::Default()
 {
 	return {
 		VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -325,7 +381,7 @@ VkSamplerCreateInfo Init<VkSamplerCreateInfo>::Base()
 
 #pragma region VkCommandPoolCreateInfo
 
-VkCommandPoolCreateInfo Init<VkCommandPoolCreateInfo>::Base(uint32_t queueFamilyIndex)
+VkCommandPoolCreateInfo Init<VkCommandPoolCreateInfo>::Create(uint32_t queueFamilyIndex)
 {
 	return {
 		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -356,7 +412,7 @@ VkAttachmentDescription Init<VkAttachmentDescription>::Color(VkFormat format)
 
 VkAttachmentDescription Init<VkAttachmentDescription>::DepthStencil(VkFormat format)
 {
-	return{
+	return {
 		0, //No flags
 		format, //Format
 		VK_SAMPLE_COUNT_1_BIT, //Sample count
@@ -440,6 +496,245 @@ VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Create(VkRenderPass rende
 		resolution.width,    //Width
 		resolution.height,   //Height
 		1                    //Layers
+	};
+}
+
+#pragma endregion
+
+#pragma region VkDescriptorSetLayoutBinding
+
+VkDescriptorSetLayoutBinding Init<VkDescriptorSetLayoutBinding>::Base()
+{
+	return {
+		0,                                  //Binding
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  //Descriptor type
+		1,                                  //Descriptor count
+		VK_SHADER_STAGE_ALL_GRAPHICS,       //Stage flats
+		nullptr                             //Immutable samplers
+	};
+}
+
+VkDescriptorSetLayoutBinding Init<VkDescriptorSetLayoutBinding>::Create(uint32_t slot, VkDescriptorType type, VkShaderStageFlags visibility)
+{
+	return {
+		slot,       //Binding
+		type,       //Descriptor type
+		1,          //Descriptor count
+		visibility, //Stage flats
+		nullptr     //Immutable samplers
+	};
+}
+
+#pragma endregion
+
+#pragma region VkDescriptorSetLayoutCreateInfo
+
+VkDescriptorSetLayoutCreateInfo Init<VkDescriptorSetLayoutCreateInfo>::Create(const std::vector<VkDescriptorSetLayoutBinding> &bindings)
+{
+	return {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		nullptr,          //Reserved
+		0,                //No flags: reserved
+		bindings.size(),  //Binding count
+		bindings.data()   //Bindings
+	};
+}
+
+#pragma endregion
+
+#pragma region VkPipelineLayoutCreateInfo
+
+VkPipelineLayoutCreateInfo Init<VkPipelineLayoutCreateInfo>::Create(const std::vector<VkDescriptorSetLayout> &layouts)
+{
+	return {
+		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		nullptr,        //Reserved,
+		0,              //No flags: reserved
+		layouts.size(), //Set layout count
+		layouts.data(), //Set layouts
+		0,              //Push constant range count
+		nullptr         //Push constant ranges
+	};
+}
+
+#pragma endregion
+
+#pragma region VulkanGraphicsPipelineState
+
+VulkanGraphicsPipelineState Init<VulkanGraphicsPipelineState>::Base(const std::vector<VkDynamicState> &dynamicStateEnables, const std::vector<VkPipelineColorBlendAttachmentState> &blendAttachments)
+{
+	return {
+		{ //Vertex input state
+			VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+			nullptr,  //Reserved
+			0,        //No flags: reserved
+			0,        //Binding description count
+			nullptr,  //Binding descriptions
+			0,        //Attribute description count
+			nullptr   //Attribute descriptions
+		},
+		{ //Input assembly state
+			VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+			nullptr, //Reserved
+			0, //No flags: reserved
+			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, //Primitive topology
+			VK_FALSE, //Enable primitive restart
+		},
+		{ //Tesselation state
+			VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+			nullptr, //Reserved
+			0,       //No flags: reserved
+			0,       //Patch control points: purposely invalid
+		},
+		{ //Viewport state
+			VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+			nullptr,  //Reserved
+			0,        //No flags: reserved
+			1,        //Viewport count
+			nullptr,  //Viewports
+			1,        //Scissor count
+			nullptr   //Scissors
+		},
+		{ //Rasterization state
+			VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+			nullptr,                  //Reserved
+			0,                        //No flags: reserved
+			VK_TRUE,                  //Enable depth clamp
+			VK_FALSE,                 //Enable rasterizer discard
+			VK_POLYGON_MODE_FILL,     //Polygon mode: [fill], wireframe, dots
+			VK_CULL_MODE_BACK_BIT,    //Cull mode: cull back-facing polygons
+			VK_FRONT_FACE_CLOCKWISE,  //Front face: discard zero-area polygons
+			VK_FALSE,                 //Enable depth bias
+			0.0f,                     //Depth bias constant factor
+			0.0f,                     //Depth bias clamp
+			0.0f,                     //Depth bias slope factor
+			1.0f                      //Line width
+		},
+		{ //Multisample state
+			VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+			nullptr,                //Reserved
+			0,                      //No flags: reserved
+			VK_SAMPLE_COUNT_1_BIT,  //Rasterization samples: 1
+			VK_FALSE,               //Enable sample shading
+			0.0f,                   //Min sample shading
+			nullptr,                //Sample mask
+			VK_FALSE,               //Enable alpha-to-coverage
+			VK_FALSE                //Enable alpha-to-one
+		},
+		{ //Depth stencil state
+			VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+			nullptr,   //Reserved
+			0,         //No flags: reserved
+			VK_TRUE,   //Enable depth test
+			VK_TRUE,   //Enable depth write
+			VK_COMPARE_OP_LESS_OR_EQUAL, //Depth compare operation
+			VK_FALSE,  //Enable depth bounds testing
+			VK_FALSE,  //Enable stencil testing
+			{          //Front-facing polygon stencil behavior
+				VK_STENCIL_OP_KEEP,     //On fail: keep the old value
+				VK_STENCIL_OP_KEEP,     //On pass: keep the old value
+				VK_STENCIL_OP_KEEP,     //On depth fail: keep the old value
+				VK_COMPARE_OP_ALWAYS,   //Compare operation: really doesn't matter, since pass and fail have the same result
+				0,     //Compare mask
+				0,     //Write mask
+				0,     //Reference
+			},
+			{          //Back-facing polygon stencil behavior (identical to front, since stencil is disabled)
+				VK_STENCIL_OP_KEEP,     //On fail: keep the old value
+				VK_STENCIL_OP_KEEP,     //On pass: keep the old value
+				VK_STENCIL_OP_KEEP,     //On depth fail: keep the old value
+				VK_COMPARE_OP_ALWAYS,   //Compare operation: really doesn't matter, since pass and fail have the same result
+				0,     //Compare mask
+				0,     //Write mask
+				0,     //Reference
+			},
+			0,         //Min depth bounds
+			1          //Max depth bounds
+		},
+		{ //Color blend state
+			VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+			nullptr,                  //Reserved
+			0,                        //No flags: reserved
+			VK_FALSE,                 //Enable logic operation
+			VK_LOGIC_OP_CLEAR,        //Logic operation: doesn't matter, since it's disabled
+			blendAttachments.size(),  //Color blend attachment count
+			blendAttachments.data(),  //Color blend attachments
+			{0.0f, 0.0f, 0.0f, 0.0f}  //Blend constants
+		},
+		{ //Dynamic state
+			VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+			nullptr,                     //Reserved
+			0,                           //No flags: reserved
+			dynamicStateEnables.size(),  //Dynamic state count
+			dynamicStateEnables.data()   //Dynamic states
+		},
+	};
+}
+
+#pragma endregion
+
+#pragma region VkShaderModuleCreateInfo
+
+VkShaderModuleCreateInfo Init<VkShaderModuleCreateInfo>::FromSPIRV(size_t codeSize, uint32_t *shaderCode)
+{
+	return {
+		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		nullptr,    //Reserved
+		0,          //No flags: reserved
+		codeSize,   //Code size
+		shaderCode  //Code
+	};
+}
+
+VkShaderModuleCreateInfo Init<VkShaderModuleCreateInfo>::FromGLSL(const std::string &source, VkShaderStageFlagBits stage, uint32_t *&spirvCode)
+{
+	//Pretty much a black box solution. Taken from the Vulkan SDK samples.
+
+	const char *shaderCode = source.c_str();
+	size_t codeSize = strlen(shaderCode);
+	spirvCode = reinterpret_cast<uint32_t*>(new char[sizeof(uint32_t)*3 + codeSize + 1]);
+
+	spirvCode[0] = 0x07230203;
+	spirvCode[1] = 0;
+	spirvCode[2] = stage;
+	memcpy(&spirvCode[3], shaderCode, codeSize + 1);
+
+	return {
+		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		nullptr,   //Reserved
+		0,         //No flags: reserved
+		codeSize,  //Code size
+		spirvCode  //Code
+	};
+}
+
+#pragma endregion
+
+#pragma region VkPipelineShaderStageCreateInfo
+
+VkPipelineShaderStageCreateInfo Init<VkPipelineShaderStageCreateInfo>::Base()
+{
+	return {
+		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		nullptr,         //Reserved
+		0,               //No flags: reserved
+		static_cast<VkShaderStageFlagBits>(0), //Shader stage: intentionally invalid
+		VK_NULL_HANDLE,  //Module
+		"main",          //Entry point
+		nullptr          //Specialization info
+	};
+}
+
+VkPipelineShaderStageCreateInfo Init<VkPipelineShaderStageCreateInfo>::FromModule(VkShaderModule module, VkShaderStageFlagBits stage, const std::string &entryFunc)
+{
+	return {
+		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		nullptr,            //Reserved
+		0,                  //No flags: reserved
+		stage,              //Shader stage
+		module,             //Module
+		entryFunc.c_str(),  //Entry point
+		nullptr             //Specialization info
 	};
 }
 
