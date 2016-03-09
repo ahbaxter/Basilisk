@@ -1,11 +1,12 @@
 /**
 \file   pipeline.h
 \author Andrew Baxter
-\date   March 6, 2015
+\date   March 8, 2015
 
 Controls shader pipelines and (eventually) compute operations
 
 \todo Implement compute pipelines
+\todo Implicit conversion operators to D3D12-version enums
 
 */
 
@@ -189,18 +190,63 @@ namespace Basilisk
 
 	/**
 	A direct mirror of Vulkan's `VkShaderStageFlagBits` structure
-	Will be translated at runtime for use in a D3D12 pipeline
+	Will be translated at compile-time for use in a D3D12 pipeline
 	*/
 	enum class ShaderStage : uint32_t
 	{
-		Vertex = 1 << 0,
-		TesselationControl = 1 << 1,
-		TesselationEvaluation = 1 << 2,
-		Geometry = 1 << 3,
-		Fragment = 1 << 4,
-		Compute = 1 << 5,
-		AllGraphics = Vertex | TesselationControl | TesselationEvaluation | Geometry | Fragment,
-		All = 0x7FFFFFFF
+		Vertex = VK_SHADER_STAGE_VERTEX_BIT,
+		TesselationControl = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+		TesselationEvaluation = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+		Geometry = VK_SHADER_STAGE_GEOMETRY_BIT,
+		Fragment = VK_SHADER_STAGE_FRAGMENT_BIT,
+		Compute = VK_SHADER_STAGE_COMPUTE_BIT,
+		AllGraphics = VK_SHADER_STAGE_ALL_GRAPHICS,
+		All = VK_SHADER_STAGE_ALL
+	};
+	ShaderStage operator|(const ShaderStage &l, const ShaderStage &r);
+	ShaderStage operator&(const ShaderStage &l, const ShaderStage &r);
+
+
+	enum class DescriptorType : uint32_t
+	{
+		Sampler = VK_DESCRIPTOR_TYPE_SAMPLER,
+		CombinedImageSampler = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		SampledImage = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		StorageImage = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+		UniformTexelBuffer = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+		StorageTexelBuffer = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+		UniformBuffer = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		StorageBuffer = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		UniformBufferDynamic = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		StorageBufferDynamic = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+		InputAttachment = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+	};
+
+	enum class ShaderFrontend : uint32_t
+	{
+		Unknown = 0,
+		SPIRV,  //Precompiled Vulkan bytecode
+		GLSL,   //Uncompiled Vulkan/OpenGL source
+	};
+
+	struct ShaderInfo
+	{
+		ShaderStage stage;
+		ShaderFrontend frontend;
+		union
+		{
+			std::string filename;
+			std::string source;
+		};
+		bool isFile;
+	};
+
+
+	struct Descriptor
+	{
+		uint32_t bindPoint;
+		DescriptorType type;
+		ShaderStage visibility;
 	};
 	
 
@@ -277,8 +323,10 @@ namespace Basilisk
 		*/
 		~VulkanGraphicsPipeline() = default;
 		
+		std::vector<VkShaderModule> m_shaders;
 		VkPipeline m_pipeline;
-		VkPipelineLayout m_layout;
+		VkDescriptorSetLayout m_descriptorSetLayout;
+		VkPipelineLayout m_pipelineLayout;
 	};
 }
 

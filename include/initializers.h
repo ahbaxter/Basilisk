@@ -1,7 +1,7 @@
 /**
 \file   initializers.h
 \author Andrew Baxter
-\date   March 6, 2016
+\date   March 8, 2016
 
 Provides default initializers for common D3D12 and Vulkan objects
 
@@ -13,6 +13,12 @@ Provides default initializers for common D3D12 and Vulkan objects
 #define BASILISK_INITIALIZERS_H
 
 #include "common.h"
+
+#define GET_INSTANCE_PROCADDR(instance, function) \
+	pfn##function = reinterpret_cast<PFN_vk##function>(vkGetInstanceProcAddr(instance, "vk"#function))
+
+#define GET_DEVICE_PROCADDR(device, function) \
+	pfn##function = reinterpret_cast<PFN_vk##function>(vkGetDeviceProcAddr(device, "vk"#function))
 
 namespace Basilisk
 {
@@ -173,13 +179,13 @@ namespace Basilisk
 			Bound to slot 0
 			Count of 1
 		*/
-		VkDescriptorSetLayoutBinding Base();
-		VkDescriptorSetLayoutBinding Create(uint32_t slot, VkDescriptorType type, VkShaderStageFlags visibility);
+		static constexpr VkDescriptorSetLayoutBinding Base();
+		static VkDescriptorSetLayoutBinding Create(uint32_t slot, VkDescriptorType type, VkShaderStageFlags visibility);
 	};
 
 	template<> struct Init<VkDescriptorSetLayoutCreateInfo>
 	{
-		VkDescriptorSetLayoutCreateInfo Create(const std::vector<VkDescriptorSetLayoutBinding> &bindings);
+		static VkDescriptorSetLayoutCreateInfo Create(const std::vector<VkDescriptorSetLayoutBinding> &bindings);
 	};
 
 	template<> struct Init<VkPipelineLayoutCreateInfo>
@@ -188,7 +194,7 @@ namespace Basilisk
 		Assumes:
 			
 		*/
-		VkPipelineLayoutCreateInfo Create(const std::vector<VkDescriptorSetLayout> &layouts);
+		static VkPipelineLayoutCreateInfo Create(const std::vector<VkDescriptorSetLayout> &layouts);
 	};
 
 	struct VulkanGraphicsPipelineState

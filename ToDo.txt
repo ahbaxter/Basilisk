@@ -1,19 +1,18 @@
 IMMEDIATE:
 
-Vulkan upgrade
+
 Input Collection
 Static Mesh Display
 Basic Shaders (Textures, then lighting)
-FreeImage
 Sprites
 
 
 UNAVOIDABLE:
 
 Pre-Compiled Headers
-Audio
-Bullet
-Assimp
+Audio?
+Set up Bullet
+Set up Assimp
 Move, copy, clone, etc optimizations
 Automate offline shader compilation
 RakNet? Maybe use the experimental STL networking library now.
