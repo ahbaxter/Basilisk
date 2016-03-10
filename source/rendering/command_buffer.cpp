@@ -10,7 +10,7 @@ Defines the behavior of Vulkan and D3D12 command buffers
 #include "rendering/command_buffer.h"
 #include "rendering/device.h"
 
-using namespace Basilisk;
+using namespace Vulkan;
 
 D3D12CmdBuffer::D3D12CmdBuffer() : m_commandList(nullptr) {
 }

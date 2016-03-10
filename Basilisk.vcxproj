@@ -22,30 +22,19 @@
     <ClInclude Include="include\basilisk.h" />
     <ClInclude Include="include\common.h" />
     <ClInclude Include="include\core\task_graph.h" />
-    <ClInclude Include="include\initializers.h" />
     <ClInclude Include="include\rendering\command_buffer.h" />
-    <ClInclude Include="include\rendering\frame_buffer.h" />
-    <ClInclude Include="include\rendering\image.h" />
-    <ClInclude Include="include\rendering\render_pass.h" />
-    <ClInclude Include="include\rendering\swap_chain.h" />
-    <ClInclude Include="include\result.h" />
     <ClInclude Include="include\profiling.h" />
-    <ClInclude Include="include\rendering\device.h" />
-    <ClInclude Include="include\rendering\pipeline.h" />
-    <ClInclude Include="include\rendering\scene.h" />
+    <ClInclude Include="include\rendering\backend.h" />
+    <ClInclude Include="include\rendering\initializers.h" />
+    <ClInclude Include="include\scene.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\common.cpp" />
     <ClCompile Include="source\core\task_graph.cpp" />
-    <ClCompile Include="source\initializers.cpp" />
     <ClCompile Include="source\profiling.cpp" />
     <ClCompile Include="source\rendering\command_buffer.cpp" />
-    <ClCompile Include="source\rendering\device.cpp" />
-    <ClCompile Include="source\rendering\frame_buffer.cpp" />
-    <ClCompile Include="source\rendering\pipeline.cpp" />
-    <ClCompile Include="source\rendering\render_pass.cpp" />
-    <ClCompile Include="source\rendering\swap_chain.cpp" />
-    <ClCompile Include="source\result.cpp" />
+    <ClCompile Include="source\rendering\backend.cpp" />
+    <ClCompile Include="source\rendering\initializers.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0A846673-CE71-47E0-A693-587F347471FD}</ProjectGuid>

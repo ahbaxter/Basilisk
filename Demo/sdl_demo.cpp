@@ -12,11 +12,10 @@
 #pragma comment(lib, "Basilisk.lib")
 
 HWND hWnd;
-const char *appName = "Basilisk";
+constexpr const char *appName = "Basilisk";
+constexpr uint32_t appVersion = 1;
 HINSTANCE hInstance;
 constexpr bool FULL_SCREEN = false;
-
-using namespace Basilisk;
 
 /*
 LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam)
@@ -219,13 +218,16 @@ int main(int argc, char *argv[])
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
 	hWnd = wmInfo.info.win.window;
 
-	VulkanInstance instance;
-	if (Failed( instance.Initialize({ hInstance, hWnd }, appName) ))
-	{
-		OutputDebugString(Basilisk::errorMessage.c_str());
-		return 1;
-	}
 
+	Vulkan::Image *imgTest;
+	size_t x = sizeof(Vulkan::Image);
+	sizeof(imgTest->__padding);
+
+	Vulkan::Instance instance;
+	instance.Initialize(appName, appVersion);
+	uint32_t numGpus = instance.FindGpus();
+
+	Vulkan::Device *device = instance.CreateDevice(0);
 	VulkanDevice *device;
 	if (Failed(instance.CreateDevice(device, 0)))
 	{
@@ -275,7 +277,7 @@ int main(int argc, char *argv[])
 		//}
 		SDL_PollEvent(&windowEvent);
 	}
-
+	
 	device->Release();
 
 	return 0;

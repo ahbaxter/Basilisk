@@ -10,63 +10,9 @@ Implements the default initializers declared in `initializers.h`
 #include <fstream>
 #include <assert.h>
 #include <memory>
-#include "initializers.h"
+#include "rendering/initializers.h"
 
-using namespace Basilisk;
-
-char *ReadBinaryFile(const std::string &filename, size_t *sizeOut)
-{
-#ifndef BASILISK_FINAL_BUILD
-	if (nullptr == sizeOut)
-	{
-		Basilisk::errorMessage = "ReadBinaryFile()::sizeOut must not be a null pointer";
-		assert("ReadBinaryFile()::sizeOut must not be a null pointer" && false);
-	}
-#endif
-	//Open the file
-	std::ifstream reader(filename, std::ios::in | std::ios::binary);
-	if (!reader)
-	{
-		Basilisk::errorMessage = "ReadBinaryFile() could not open " + filename;
-		*sizeOut = 0;
-		return nullptr;
-	}
-
-	//Get size of file
-	std::streampos start = reader.tellg();
-	reader.seekg(0, std::ios::end);
-	*sizeOut = reader.tellg() - start;
-
-	//Read from the file
-	char *data = new char[*sizeOut];
-	reader.seekg(start);
-	reader.get(data, *sizeOut);
-	reader.close();
-
-	return data;
-}
-
-std::string ReadTextFile(const std::string &filename)
-{
-	//Open the file
-	std::ifstream reader(filename, std::ios::in);
-	if (!reader.is_open())
-	{
-		Basilisk::errorMessage = "ReadTextFile() could not open " + filename;
-		return "";
-	}
-
-	//Read from the file
-	std::string contents, line = "";
-	while (!reader.eof())
-	{
-		getline(reader, line);
-		contents.append(line + "\n");
-	}
-	reader.close();
-
-	return contents;
-}
+using namespace Vulkan;
 
 #pragma region VkImageCreateInfo
 
@@ -112,7 +58,7 @@ VkImageCreateInfo Init<VkImageCreateInfo>::Texture1D(uint32_t width, VkFormat fo
 	};
 }
 
-VkImageCreateInfo Init<VkImageCreateInfo>::Texture2D(Bounds2D<uint32_t> dimensions, VkFormat format, VkImageUsageFlags usage, VkImageLayout initialLayout, uint32_t arrayLayers, uint32_t mipLevels)
+VkImageCreateInfo Init<VkImageCreateInfo>::Texture2D(glm::uvec2 dimensions, VkFormat format, VkImageUsageFlags usage, VkImageLayout initialLayout, uint32_t arrayLayers, uint32_t mipLevels)
 {
 	return {
 		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -120,7 +66,7 @@ VkImageCreateInfo Init<VkImageCreateInfo>::Texture2D(Bounds2D<uint32_t> dimensio
 		0,                          //Flags
 		VK_IMAGE_TYPE_2D,           //Image type
 		format,                     //Format
-		{ dimensions.width, dimensions.height, 1 },  //Extent
+		{ dimensions.x, dimensions.y, 1 },  //Extent
 		mipLevels,                  //Mip levels
 		arrayLayers,                //Array layers
 		VK_SAMPLE_COUNT_1_BIT,      //Sample count
@@ -133,7 +79,7 @@ VkImageCreateInfo Init<VkImageCreateInfo>::Texture2D(Bounds2D<uint32_t> dimensio
 	};
 }
 
-VkImageCreateInfo Init<VkImageCreateInfo>::Texture3D(Bounds3D<uint32_t> dimensions, VkFormat format, VkImageUsageFlags usage, VkImageLayout initialLayout, uint32_t arrayLayers, uint32_t mipLevels)
+VkImageCreateInfo Init<VkImageCreateInfo>::Texture3D(glm::uvec3 dimensions, VkFormat format, VkImageUsageFlags usage, VkImageLayout initialLayout, uint32_t arrayLayers, uint32_t mipLevels)
 {
 	return {
 		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -141,7 +87,7 @@ VkImageCreateInfo Init<VkImageCreateInfo>::Texture3D(Bounds3D<uint32_t> dimensio
 		0,                          //Flags
 		VK_IMAGE_TYPE_2D,           //Image type
 		format,                     //Format
-		{ dimensions.width, dimensions.height, dimensions.depth },  //Extent
+		{ dimensions.x, dimensions.y, dimensions.z },  //Extent
 		mipLevels,                  //Mip levels
 		arrayLayers,                //Array layers
 		VK_SAMPLE_COUNT_1_BIT,      //Sample count
@@ -154,7 +100,7 @@ VkImageCreateInfo Init<VkImageCreateInfo>::Texture3D(Bounds3D<uint32_t> dimensio
 	};
 }
 
-VkImageCreateInfo Init<VkImageCreateInfo>::DepthStencil(Bounds2D<uint32_t> dimensions, VkFormat format, VkImageLayout initialLayout)
+VkImageCreateInfo Init<VkImageCreateInfo>::DepthStencil(glm::uvec2 dimensions, VkFormat format, VkImageLayout initialLayout)
 {
 	return {
 		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -162,7 +108,7 @@ VkImageCreateInfo Init<VkImageCreateInfo>::DepthStencil(Bounds2D<uint32_t> dimen
 		0,                          //Flags
 		VK_IMAGE_TYPE_2D,           //Image type
 		format,                     //Format
-		{ dimensions.width, dimensions.height, 1 },  //Extent
+		{ dimensions.x, dimensions.y, 1 },  //Extent
 		1,                          //Mip levels
 		1,                          //Array layers
 		VK_SAMPLE_COUNT_1_BIT,      //Sample count
@@ -484,7 +430,7 @@ VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Base()
 	};
 }
 
-VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Create(VkRenderPass renderPass, Bounds2D<uint32_t> resolution, const std::vector<VkImageView> &attachments)
+VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Create(VkRenderPass renderPass, glm::uvec2 resolution, const std::vector<VkImageView> &attachments)
 {
 	return {
 		VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -493,8 +439,8 @@ VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Create(VkRenderPass rende
 		renderPass,          //Render pass
 		attachments.size(),  //Attachment count
 		attachments.data(),  //Attachments
-		resolution.width,    //Width
-		resolution.height,   //Height
+		resolution.x,        //Width
+		resolution.y,        //Height
 		1                    //Layers
 	};
 }

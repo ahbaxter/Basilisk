@@ -1,11 +1,12 @@
 /**
 \file   initializers.h
 \author Andrew Baxter
-\date   March 8, 2016
+\date   March 9, 2016
 
-Provides default initializers for common D3D12 and Vulkan objects
+Provides default CreateInfo structs for common Vulkan objects
 
 \todo Add push constants to `Init<VkPipelineLayoutCreateInfo>`
+\todo Send to hell. I don't know what I was thinking; this is disgusting.
 
 */
 
@@ -14,17 +15,8 @@ Provides default initializers for common D3D12 and Vulkan objects
 
 #include "common.h"
 
-#define GET_INSTANCE_PROCADDR(instance, function) \
-	pfn##function = reinterpret_cast<PFN_vk##function>(vkGetInstanceProcAddr(instance, "vk"#function))
-
-#define GET_DEVICE_PROCADDR(device, function) \
-	pfn##function = reinterpret_cast<PFN_vk##function>(vkGetDeviceProcAddr(device, "vk"#function))
-
-namespace Basilisk
+namespace Vulkan
 {
-	char *ReadBinaryFile(const std::string &filename, size_t *sizeOut);
-
-	std::string ReadTextFile(const std::string &filename);
 
 	template<typename T>
 	struct Init;
@@ -53,10 +45,10 @@ namespace Basilisk
 		*/
 		static constexpr VkImageCreateInfo Base();
 		static VkImageCreateInfo Texture1D(uint32_t width, VkFormat format = VK_FORMAT_R8G8B8A8_UNORM, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, uint32_t arrayLayers = 1, uint32_t mipLevels = 1);
-		static VkImageCreateInfo Texture2D(Bounds2D<uint32_t> dimensions, VkFormat format = VK_FORMAT_R8G8B8A8_UNORM, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, uint32_t arrayLayers = 1, uint32_t mipLevels = 1);
-		static VkImageCreateInfo Texture3D(Bounds3D<uint32_t> dimensions, VkFormat format = VK_FORMAT_R8G8B8A8_UNORM, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, uint32_t arrayLayers = 1, uint32_t mipLevels = 1);
+		static VkImageCreateInfo Texture2D(glm::uvec2 dimensions, VkFormat format = VK_FORMAT_R8G8B8A8_UNORM, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, uint32_t arrayLayers = 1, uint32_t mipLevels = 1);
+		static VkImageCreateInfo Texture3D(glm::uvec3 dimensions, VkFormat format = VK_FORMAT_R8G8B8A8_UNORM, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, uint32_t arrayLayers = 1, uint32_t mipLevels = 1);
 		static VkImageCreateInfo CubeMap(uint32_t sideLength, VkFormat format = VK_FORMAT_R8G8B8A8_UNORM, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, uint32_t arrayLayers = 1, uint32_t mipLevels = 1);
-		static VkImageCreateInfo DepthStencil(Bounds2D<uint32_t> dimensions, VkFormat format, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		static VkImageCreateInfo DepthStencil(glm::uvec2 dimensions, VkFormat format, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	};
 	
 	template<> struct Init<VkImageViewCreateInfo>
@@ -161,7 +153,7 @@ namespace Basilisk
 			Attachments
 		*/
 		static constexpr VkFramebufferCreateInfo Base();
-		static VkFramebufferCreateInfo Create(VkRenderPass renderPass, Bounds2D<uint32_t> resolution, const std::vector<VkImageView> &attachments);
+		static VkFramebufferCreateInfo Create(VkRenderPass renderPass, glm::uvec2 resolution, const std::vector<VkImageView> &attachments);
 	};
 
 	///////////////////////////////////////

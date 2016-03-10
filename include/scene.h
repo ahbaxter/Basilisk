@@ -1,7 +1,7 @@
 /**
 \file   scene.h
 \author Andrew Baxter
-\date February 17, 2016
+\date   March 9, 2016
 
 Represents a persistent game level
 
@@ -13,7 +13,6 @@ Represents a persistent game level
 #define BASILISK_SCENE_H
 
 #include "common.h"
-#include <glm/glm/fwd.hpp>
 
 namespace Basilisk
 {
@@ -33,7 +32,7 @@ namespace Basilisk
 
 		\param[in] filename The file to read from
 		*/
-		Result Load(const std::string &filename);
+		bool Load(const std::string &filename);
 
 		void Clear();
 

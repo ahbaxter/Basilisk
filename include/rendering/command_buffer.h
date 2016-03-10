@@ -13,7 +13,7 @@ Encapsulates a command buffers (or command lists in D3D12)
 #include "common.h"
 #include "swap_chain.h"
 
-namespace Basilisk
+namespace Vulkan
 {
 	/**
 	Uses CRTP abstraction to represent an ambiguous command buffer
@@ -109,25 +109,6 @@ namespace Basilisk
 		inline void Release() {
 			GetImplementation().Release();
 		}
-	};
-
-	/** Implements the `CmdBuffer` interface for Direct3D 12 */
-	class D3D12CmdBuffer : public CmdBuffer<D3D12CmdBuffer>
-	{
-	public:
-		friend class D3D12Device;
-
-		Result Begin(bool disposable);
-
-		void WriteBundle(const VulkanCmdBuffer *bundle);
-
-		Result End();
-
-	private:
-		D3D12CmdBuffer();
-		~D3D12CmdBuffer() = default;
-
-		ID3D12GraphicsCommandList *m_commandList;
 	};
 
 	/** Implements the `CmdBuffer` interface for Vulkan */

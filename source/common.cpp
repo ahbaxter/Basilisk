@@ -1,9 +1,9 @@
 /**
 \file   common.cpp
 \author Andrew Baxter
-\date   February 17, 2015
+\date   March 9, 2015
 
-Links to Direct3D 12 and Vulkan libraries
+Links to Vulkan binaries
 
 */
 
@@ -16,6 +16,5 @@ Links to Direct3D 12 and Vulkan libraries
 #pragma comment(lib, "Bin32/vulkan-1.lib")
 #endif
 
-#pragma comment(lib, "d3d12.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d3dcompiler.lib")
+std::queue<std::string> Basilisk::errors;
+std::queue<std::string> Basilisk::warnings;

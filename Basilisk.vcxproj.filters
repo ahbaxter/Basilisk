@@ -48,37 +48,19 @@
     <ClInclude Include="include\basilisk.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\pipeline.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="include\rendering\device.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="include\rendering\scene.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="include\result.h">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="include\core\task_graph.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="include\rendering\command_buffer.h">
       <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\swap_chain.h">
+    <ClInclude Include="include\rendering\backend.h">
       <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\image.h">
+    <ClInclude Include="include\rendering\initializers.h">
       <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\render_pass.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="include\rendering\frame_buffer.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="include\initializers.h">
+    <ClInclude Include="include\scene.h">
       <Filter>Core</Filter>
     </ClInclude>
   </ItemGroup>
@@ -89,31 +71,16 @@
     <ClCompile Include="source\common.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="source\rendering\pipeline.cpp">
-      <Filter>Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="source\rendering\device.cpp">
-      <Filter>Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="source\result.cpp">
-      <Filter>Core</Filter>
-    </ClCompile>
     <ClCompile Include="source\core\task_graph.cpp">
       <Filter>Core</Filter>
-    </ClCompile>
-    <ClCompile Include="source\rendering\swap_chain.cpp">
-      <Filter>Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="source\rendering\render_pass.cpp">
-      <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="source\rendering\command_buffer.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="source\initializers.cpp">
-      <Filter>Core</Filter>
+    <ClCompile Include="source\rendering\backend.cpp">
+      <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="source\rendering\frame_buffer.cpp">
+    <ClCompile Include="source\rendering\initializers.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
   </ItemGroup>

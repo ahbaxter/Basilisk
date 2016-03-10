@@ -1,9 +1,9 @@
 /**
 \file   basilisk.h
 \author Andrew Baxter
-\date   February 17, 2016
+\date   March 9, 2016
 
-`include`s all the core header files
+Includes all the core header files
 
 */
 
@@ -11,7 +11,7 @@
 #define BASILISK_BASILISK_H
 
 #include "common.h"
-#include "rendering/device.h"
+#include "rendering/backend.h"
 #include "core/task_graph.h"
 #include "profiling.h"
 
