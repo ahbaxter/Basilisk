@@ -1,7 +1,7 @@
 /**
 \file   backend.cpp
 \author Andrew Baxter
-\date   March 9, 2016
+\date   March 10, 2016
 
 Defines the behavior of Vulkan rendering backends
 
@@ -814,12 +814,124 @@ bool Device::MemoryTypeFromProps(uint32_t typeBits, VkFlags requirements_mask, u
 	return false;
 }
 
+std::shared_ptr<PipelineLayout> Device::CreatePipelineLayout(const std::vector<Descriptor> &bindings)
+{
+	auto out = std::make_shared(new PipelineLayout,
+		[=](PipelineLayout *ptr) {
+			ptr->Release(m_device);
+			delete ptr;
+			ptr = nullptr;
+		}
+	);
+	
+	std::vector<VkDescriptorSetLayoutBinding> layout_bindings(bindings.size());
+	for (uint32_t i = 0; i < bindings.size(); ++i)
+	{
+		layout_bindings[i] = Init<VkDescriptorSetLayoutBinding>::Create(bindings.bindPoint, bindings.type, bindings.visibility);
+	}
+	
+	VkDescriptorSetLayoutCreateInfo set_info = Init<VkDescriptorSetLayoutCreateInfo>(layout_bindings);
+
+	VkResult res = vkCreateDescriptorSetLayout(m_device, &set_info, nullptr,
+		&out->setLayout);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::CreatePipelineLayout() could not create the descriptor set layout");
+		return nullptr;
+	}
+	
+	VkPipelineLayoutCreateInfo pipeline_info = {
+		VK_STRUCTURE_TYPE_PIPELINE_CREATE_INFO,
+		nullptr,                 //Reserved
+		0,                       //No flags: reserved
+		layout_binding.count(),  //Descriptor set layout count
+		&out->m_setLayout,       //Descriptor set layouts
+		0,                       //Push constant range count
+		VK_NULL_HANDLE           //Push constant ranges
+	};
+	
+	res = vkCreatePipelineLayout(m_device, &pipeline_info, nullptr, &out->m_layout);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulan::Device::CreatePipelineLayout() could not create the pipeline layout");
+		return nullptr;
+	}
+	
+	
+	return out;
+}
+
+std::shared_ptr<Shader> Device::CreateShaderFromSPIRV(uint32_t size, uint32_t *bytecode)
+{
+	auto out = std::make_shared<Shader>(new Shader,
+		[=](Shader *ptr) {
+			ptr->Release(m_device);
+			delete ptr;
+			ptr = nullptr;
+		}
+	);
+	VkResult res;
+	
+	VkShaderModuleCreateInfo module_info = {
+		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		nullptr,   //Reserved
+		0,         //No flags: reserved
+		size,      //Bytecode size in bytes
+		bytecode   //Bytecode data
+	};
+
+	res = vkCreateShaderModule(m_device, &module_info, nullptr, &out->m_module);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::CreateShaderFromSPIRV() could not create the shader module");
+		return nullptr;
+	}
+
+
+	return out;
+}
+
+std::shared_ptr<Shader> Device::CreateShaderFromGLSL(const std::string &source, VkShaderStageFlagBits stage)
+{
+	auto out = std::make_shared<Shader>(new Shader,
+		[=](Shader *ptr) {
+			ptr->Release(m_device);
+			delete ptr;
+			ptr = nullptr;
+		}
+	);
+	VkResult res;
+	
+	uint32_t spirvSize = 3 * sizeof(uint32_t) + size + 1;
+	uint32_t *spirvCode = new uint32_t[spirvSize];
+	spirvCode[0] = 0x07230203;
+	spirvCode[1] = 0;
+	spirvCode[2] = stage;
+	memcpy(spirvCode[3], source.c_str(), spirvSize + 1); //1 more byte for escape character
+	
+	VkShaderModuleCreateInfo module_info = {
+		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		nullptr,    //Reserved
+		0,          //No flags: reserved
+		spirvSize,  //Bytecode size in bytes
+		spirvCode   //Bytecode data
+	};
+
+	res = vkCreateShaderModule(m_device, &module_info, nullptr, &out->m_module);
+	delete[] spirvCode;
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::CreateShaderFromGLSL() could not create the shader module");
+		return nullptr;
+	}
+
+
+	return out;
+}
+
 /* Separate into Device::CreatePipelineLayout and Device::CreateShader functions
 std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shared_ptr<PipelineLayout> &layout, const std::vector<Shader> &shaders)
 {
-#ifndef BASILISK_FINAL_BUILD
-
-#endif
 
 	//Passes all prerequisites
 
@@ -831,36 +943,5 @@ std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shar
 		}
 	);
 	VkResult res;
-
-	std::vector<VkDescriptorSetLayoutBinding> bindings(layout->m_descriporsLayout.size());
-	for (uint32_t i = 0; i < bindings.size(); ++i)
-	{
-		bindings[i].binding = layout[i].bindPoint;
-		bindings[i].descriptorType = static_cast<VkDescriptorType>(layout[i].type);
-		bindings[i].descriptorCount = 1;
-		bindings[i].stageFlags = static_cast<VkShaderStageFlags>(layout[i].visibility);
-		bindings[i].pImmutableSamplers = nullptr;
-	}
-
-	VkDescriptorSetLayoutCreateInfo desc_layout_info = Init<VkDescriptorSetLayoutCreateInfo>::Create(bindings);
-	res = vkCreateDescriptorSetLayout(m_device, &desc_layout_info, nullptr, &out->m_descriptorSetLayout);
-	if (Failed(res))
-	{
-		Basilisk::errors.push("Basilisk::Device::CreateGraphicsPipeline() could not create the descriptor set layout";
-		SafeRelease(out);
-		return nullptr;
-	}
-
-	VkPipelineLayoutCreateInfo pipeline_layout_info = Init<VkPipelineLayoutCreateInfo>::Create({ out->m_descriptorSetLayout });
-	res = vkCreatePipelineLayout(m_device, &pipeline_layout_info, nullptr, &out->m_pipelineLayout);
-	if (Failed(res))
-	{
-		Basilisk::errors.push("Basilisk::Device::CreateGraphicsPipeline() could not create the pipeline layout";
-		SafeRelease(out);
-		return nullptr;
-	}
-
-
-	return Result::Success;
 }
 */

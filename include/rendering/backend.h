@@ -1,14 +1,15 @@
 /**
 \file   backend.h
 \author Andrew Baxter
-\date   March 9, 2016
+\date   March 10, 2016
 
 The virtual interface with the Vulkan API
 
+\todo Integrate command buffers
 \todo Figure out what I'm doing with render and present queues
 \todo Look into debug/validation layers
 \todo Boot up Vulkan without a render output, or with a monitor target
-\todo Contiguous FrameBuffer image memory
+\todo Can FrameBuffer image memory be contiguous?
 
 */
 
@@ -128,14 +129,12 @@ namespace Vulkan
 		VkShaderModule m_module;
 	};
 	
-	/*
 	struct Descriptor
 	{
 		uint32_t bindPoint;
 		DescriptorType type;
 		VkShaderStageFlagBits visibility;
 	};
-	*/
 	
 	class PipelineLayout
 	{
@@ -147,8 +146,8 @@ namespace Vulkan
 		~PipelineLayout() = default;
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
-
-		VkDescriptorSetLayout m_descriporsLayout;
+		
+		VkDescriptorSetLayoutInfo m_setLayout;
 		VkPipelineLayout m_layout;
 	};
 
@@ -253,11 +252,38 @@ namespace Vulkan
 		friend class Instance;
 
 		/**
+		Creates a pipeline layout - reusable across multiple pipelines
+		
+		\param[in] bindings 
+		\return If successful, a pointer to the resulting pipeline layout. If failed, `nullptr`.
+		*/
+		std::shared_ptr<PipelineLayout> CreatePipelineLayout(const std::vector<Descriptor> &bindings);
+		
+		/**
+		Creates a shader module from SPIR-V bytecode
+		
+		\param[in] blobSize The size of the bytecode blob, in bytes
+		\param[in] bytecode The bytecode to use
+		\return If successful, a pointer to the resulting shader module. If failed, `nullptr`.
+		*/
+		std::shared_ptr<Shader> CreateShaderFromSPIRV(uint32_t blobSize, uint32_t *bytecode);
+		/**
+		Creates a shader module from GLSL source code
+		
+		\param[in] source The source to compile
+		\param[in] stage What part of the pipeline this shader will be bound to
+		\return If successful, a pointer to the resulting shader module. If failed, `nullptr`.
+		
+		\todo Validate stage to make sure we compile as a single stage
+		*/
+		std::shared_ptr<Shader> CreateShaderFromGLSL(const std::string &source, VkShaderStageFlagBits stage);
+		
+		/**
 		Creates a graphics pipeline
 
 		\param[in] layout What information this pipeline expects to receive when used
 		\param[in] shaders A list of shaders to bind to different stages of the pipeline
-		\return If successful, a pointer to the resulting graphics pipeline. If unsuccessfull, `nullptr`.
+		\return If successful, a pointer to the resulting graphics pipeline. If failed, `nullptr`.
 		*/
 		std::shared_ptr<GraphicsPipeline> CreateGraphicsPipeline(const std::shared_ptr<PipelineLayout> &layout, const std::vector<Shader> &shaders);
 
@@ -291,7 +317,7 @@ namespace Vulkan
 		\return If successful, a pointer to the resulting frame buffer. If failed, `nullptr`.
 		*/
 		std::shared_ptr<FrameBuffer> CreateFrameBuffer(glm::uvec2 resolution, const std::vector<VkFormat> &colorFormats = {VK_FORMAT_R8G8B8A8_UNORM}, bool enableDepth = true);
-
+		
 		/**
 		Executes pre-recorded commands stored in a command bundle
 
