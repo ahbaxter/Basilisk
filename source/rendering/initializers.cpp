@@ -16,27 +16,6 @@ using namespace Vulkan;
 
 #pragma region VkImageCreateInfo
 
-VkImageCreateInfo Init<VkImageCreateInfo>::Base()
-{
-	return {
-		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-		nullptr,                    //Reserved
-		0,                          //Flags
-		VK_IMAGE_TYPE_2D,           //Image type
-		VK_FORMAT_R8G8B8A8_UNORM,   //Format
-		{ 1, 1, 1 },                //Extent
-		1,                          //Mip levels
-		1,                          //Array layers
-		VK_SAMPLE_COUNT_1_BIT,      //Sample count
-		VK_IMAGE_TILING_OPTIMAL,    //Tiling
-		VK_IMAGE_USAGE_SAMPLED_BIT, //Usage
-		VK_SHARING_MODE_EXCLUSIVE,  //Sharing mode
-		0,                          //Queue family index count
-		nullptr,                    //Queue family indices
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL //Initial layout
-	};
-}
-
 VkImageCreateInfo Init<VkImageCreateInfo>::Texture1D(uint32_t width, VkFormat format, VkImageUsageFlags usage, VkImageLayout initialLayout, uint32_t arrayLayers, uint32_t mipLevels)
 {
 	return {
@@ -145,31 +124,6 @@ VkImageCreateInfo Init<VkImageCreateInfo>::CubeMap(uint32_t sideLength, VkFormat
 #pragma endregion
 
 #pragma region VkImageViewCreateInfo
-
-VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Base()
-{
-	return {
-		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-		nullptr,                      //Reserved
-		0,                            //Flags
-		VK_NULL_HANDLE,               //Image handle
-		VK_IMAGE_VIEW_TYPE_2D,        //Image view type
-		VK_FORMAT_R8G8B8A8_UNORM,     //Format
-		{
-			VK_COMPONENT_SWIZZLE_R,   //Everything is
-			VK_COMPONENT_SWIZZLE_G,   //ordered the same
-			VK_COMPONENT_SWIZZLE_B,   //in the shaders
-			VK_COMPONENT_SWIZZLE_A,   //as it is here
-		},                            ///Components
-		{
-			VK_IMAGE_ASPECT_COLOR_BIT, //Aspect mask
-			0,                         //Base mip level
-			1,                         //Mip level count
-			0,                         //Base array layer
-			1                          //Array layer count
-		}                              ///Subresource range
-	};
-}
 
 VkImageViewCreateInfo Init<VkImageViewCreateInfo>::Texture1D(VkImage image, VkFormat format, uint32_t arrayLayers, uint32_t baseArrayLayer, uint32_t mipLevels, uint32_t baseMipLevel)
 {
@@ -300,26 +254,26 @@ VkImageViewCreateInfo Init<VkImageViewCreateInfo>::DepthStencil(VkImage image, V
 
 #pragma region VkSamplerCreateInfo
 
-VkSamplerCreateInfo Init<VkSamplerCreateInfo>::Default()
+ VkSamplerCreateInfo Init<VkSamplerCreateInfo>::Create(VkFilter filter, VkSamplerAddressMode addressMode, VkSamplerMipmapMode mipmapMode, VkCompareOp compareOp)
 {
 	return {
 		VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-		nullptr,             //Reserved
-		0,                   //Flags: reserved
-		VK_FILTER_LINEAR,    //Mag filter
-		VK_FILTER_LINEAR,    //Min filter
-		VK_SAMPLER_MIPMAP_MODE_LINEAR, //Mipmap mode
-		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, //Address mode U
-		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, //Address mode V
-		VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, //Address mode W
-		0.0f,                //Mip lod bias
-		VK_FALSE,            //Enable anistropy
-		0,                   //Max anistopy
-		VK_FALSE,            //Enable compare
-		VK_COMPARE_OP_NEVER, //Compare operation,
-		0.0f,                //Min lod
-		0.0f,                //Max lod
-		VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE //Border color
+		nullptr,      //Reserved
+		0,            //Flags: reserved
+		filter,       //Mag filter
+		filter,       //Min filter
+		mipmapMode,   //Mipmap mode
+		addressMode,  //Address mode U
+		addressMode,  //Address mode V
+		addressMode,  //Address mode W
+		0.0f,         //Mip lod bias
+		VK_FALSE,     //Enable anistropy
+		0,            //Max anistopy
+		VK_FALSE,     //Enable compare
+		compareOp,    //Compare operation,
+		0.0f,         //Min lod
+		0.0f,         //Max lod
+		VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE  //Border color
 	};
 }
 
@@ -371,64 +325,9 @@ VkAttachmentDescription Init<VkAttachmentDescription>::DepthStencil(VkFormat for
 	};
 }
 
-
-#pragma endregion
-
-#pragma region VkSubpassDescription
-
-VkSubpassDescription Init<VkSubpassDescription>::Base()
-{
-	return {
-		0,        //Flags
-		VK_PIPELINE_BIND_POINT_GRAPHICS,  //Pipeline bind point
-		0,        //Input attachment count
-		nullptr,  //Input attachments
-		0,        //Color attachment count
-		nullptr,  //Color attachments
-		nullptr,  //Resolve attachment
-		nullptr,  //Depth buffer attachment
-		0,        //Preserve attachment count
-		nullptr   //Preserve attachments
-	};
-}
-
-#pragma endregion
-
-#pragma region VkRenderPassCreateInfo
-
-VkRenderPassCreateInfo Init<VkRenderPassCreateInfo>::Base()
-{
-	return {
-		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-		nullptr,  //Reserved
-		0,        //No flags
-		0,        //Attachment count
-		nullptr,  //Attachments
-		0,        //Subpass count
-		nullptr,  //Subpasses
-		0,        //Dependency count
-		nullptr   //Dependencies
-	};
-}
-
 #pragma endregion
 
 #pragma region VkFramebufferCreateInfo
-
-VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Base()
-{
-	return {
-		VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-		nullptr,        //Reserved
-		0,              //No flags: reserved
-		VK_NULL_HANDLE, //Render pass
-		0,              //Attachment count
-		nullptr,        //Attachments
-		0,              //Width
-		0,              //Height
-		1               //Layers
-	};
-}
 
 VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Create(VkRenderPass renderPass, glm::uvec2 resolution, const std::vector<VkImageView> &attachments)
 {
@@ -437,11 +336,11 @@ VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Create(VkRenderPass rende
 		nullptr,             //Reserved
 		0,                   //No flags: reserved
 		renderPass,          //Render pass
-		attachments.size(),  //Attachment count
+		static_cast<uint32_t>(attachments.size()),  //Attachment count
 		attachments.data(),  //Attachments
 		resolution.x,        //Width
 		resolution.y,        //Height
-		1                    //Layers
+		1                   //Layers
 	};
 }
 
@@ -449,24 +348,13 @@ VkFramebufferCreateInfo Init<VkFramebufferCreateInfo>::Create(VkRenderPass rende
 
 #pragma region VkDescriptorSetLayoutBinding
 
-VkDescriptorSetLayoutBinding Init<VkDescriptorSetLayoutBinding>::Base()
-{
-	return {
-		0,                                  //Binding
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  //Descriptor type
-		1,                                  //Descriptor count
-		VK_SHADER_STAGE_ALL_GRAPHICS,       //Stage flats
-		nullptr                             //Immutable samplers
-	};
-}
-
 VkDescriptorSetLayoutBinding Init<VkDescriptorSetLayoutBinding>::Create(uint32_t slot, VkDescriptorType type, VkShaderStageFlags visibility)
 {
 	return {
 		slot,       //Binding
 		type,       //Descriptor type
 		1,          //Descriptor count
-		visibility, //Stage flats
+		visibility, //Stage flags
 		nullptr     //Immutable samplers
 	};
 }
@@ -481,7 +369,7 @@ VkDescriptorSetLayoutCreateInfo Init<VkDescriptorSetLayoutCreateInfo>::Create(co
 		VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 		nullptr,          //Reserved
 		0,                //No flags: reserved
-		bindings.size(),  //Binding count
+		static_cast<uint32_t>(bindings.size()),  //Binding count. Narrowed from 64-bits, but no GPU can come close to handling that amount of descriptor sets anyways.
 		bindings.data()   //Bindings
 	};
 }
@@ -496,124 +384,10 @@ VkPipelineLayoutCreateInfo Init<VkPipelineLayoutCreateInfo>::Create(const std::v
 		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		nullptr,        //Reserved,
 		0,              //No flags: reserved
-		layouts.size(), //Set layout count
+		static_cast<uint32_t>(layouts.size()), //Set layout count
 		layouts.data(), //Set layouts
 		0,              //Push constant range count
 		nullptr         //Push constant ranges
-	};
-}
-
-#pragma endregion
-
-#pragma region VulkanGraphicsPipelineState
-
-VulkanGraphicsPipelineState Init<VulkanGraphicsPipelineState>::Base(const std::vector<VkDynamicState> &dynamicStateEnables, const std::vector<VkPipelineColorBlendAttachmentState> &blendAttachments)
-{
-	return {
-		{ //Vertex input state
-			VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-			nullptr,  //Reserved
-			0,        //No flags: reserved
-			0,        //Binding description count
-			nullptr,  //Binding descriptions
-			0,        //Attribute description count
-			nullptr   //Attribute descriptions
-		},
-		{ //Input assembly state
-			VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-			nullptr, //Reserved
-			0, //No flags: reserved
-			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, //Primitive topology
-			VK_FALSE, //Enable primitive restart
-		},
-		{ //Tesselation state
-			VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
-			nullptr, //Reserved
-			0,       //No flags: reserved
-			0,       //Patch control points: purposely invalid
-		},
-		{ //Viewport state
-			VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-			nullptr,  //Reserved
-			0,        //No flags: reserved
-			1,        //Viewport count
-			nullptr,  //Viewports
-			1,        //Scissor count
-			nullptr   //Scissors
-		},
-		{ //Rasterization state
-			VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-			nullptr,                  //Reserved
-			0,                        //No flags: reserved
-			VK_TRUE,                  //Enable depth clamp
-			VK_FALSE,                 //Enable rasterizer discard
-			VK_POLYGON_MODE_FILL,     //Polygon mode: [fill], wireframe, dots
-			VK_CULL_MODE_BACK_BIT,    //Cull mode: cull back-facing polygons
-			VK_FRONT_FACE_CLOCKWISE,  //Front face: discard zero-area polygons
-			VK_FALSE,                 //Enable depth bias
-			0.0f,                     //Depth bias constant factor
-			0.0f,                     //Depth bias clamp
-			0.0f,                     //Depth bias slope factor
-			1.0f                      //Line width
-		},
-		{ //Multisample state
-			VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-			nullptr,                //Reserved
-			0,                      //No flags: reserved
-			VK_SAMPLE_COUNT_1_BIT,  //Rasterization samples: 1
-			VK_FALSE,               //Enable sample shading
-			0.0f,                   //Min sample shading
-			nullptr,                //Sample mask
-			VK_FALSE,               //Enable alpha-to-coverage
-			VK_FALSE                //Enable alpha-to-one
-		},
-		{ //Depth stencil state
-			VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-			nullptr,   //Reserved
-			0,         //No flags: reserved
-			VK_TRUE,   //Enable depth test
-			VK_TRUE,   //Enable depth write
-			VK_COMPARE_OP_LESS_OR_EQUAL, //Depth compare operation
-			VK_FALSE,  //Enable depth bounds testing
-			VK_FALSE,  //Enable stencil testing
-			{          //Front-facing polygon stencil behavior
-				VK_STENCIL_OP_KEEP,     //On fail: keep the old value
-				VK_STENCIL_OP_KEEP,     //On pass: keep the old value
-				VK_STENCIL_OP_KEEP,     //On depth fail: keep the old value
-				VK_COMPARE_OP_ALWAYS,   //Compare operation: really doesn't matter, since pass and fail have the same result
-				0,     //Compare mask
-				0,     //Write mask
-				0,     //Reference
-			},
-			{          //Back-facing polygon stencil behavior (identical to front, since stencil is disabled)
-				VK_STENCIL_OP_KEEP,     //On fail: keep the old value
-				VK_STENCIL_OP_KEEP,     //On pass: keep the old value
-				VK_STENCIL_OP_KEEP,     //On depth fail: keep the old value
-				VK_COMPARE_OP_ALWAYS,   //Compare operation: really doesn't matter, since pass and fail have the same result
-				0,     //Compare mask
-				0,     //Write mask
-				0,     //Reference
-			},
-			0,         //Min depth bounds
-			1          //Max depth bounds
-		},
-		{ //Color blend state
-			VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-			nullptr,                  //Reserved
-			0,                        //No flags: reserved
-			VK_FALSE,                 //Enable logic operation
-			VK_LOGIC_OP_CLEAR,        //Logic operation: doesn't matter, since it's disabled
-			blendAttachments.size(),  //Color blend attachment count
-			blendAttachments.data(),  //Color blend attachments
-			{0.0f, 0.0f, 0.0f, 0.0f}  //Blend constants
-		},
-		{ //Dynamic state
-			VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-			nullptr,                     //Reserved
-			0,                           //No flags: reserved
-			dynamicStateEnables.size(),  //Dynamic state count
-			dynamicStateEnables.data()   //Dynamic states
-		},
 	};
 }
 
@@ -658,7 +432,7 @@ VkShaderModuleCreateInfo Init<VkShaderModuleCreateInfo>::FromGLSL(const std::str
 
 #pragma region VkPipelineShaderStageCreateInfo
 
-VkPipelineShaderStageCreateInfo Init<VkPipelineShaderStageCreateInfo>::Base()
+constexpr VkPipelineShaderStageCreateInfo Init<VkPipelineShaderStageCreateInfo>::Base()
 {
 	return {
 		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,

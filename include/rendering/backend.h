@@ -8,7 +8,11 @@ The virtual interface with the Vulkan API
 \todo Integrate command buffers
 \todo Figure out what I'm doing with render and present queues
 \todo Look into debug/validation layers
+<<<<<<< HEAD
+\todo Boot up Vulkan with a monitor target
+=======
 \todo Boot up Vulkan without a render output, or with a monitor target
+>>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 \todo Can FrameBuffer image memory be contiguous?
 
 */
@@ -16,9 +20,8 @@ The virtual interface with the Vulkan API
 #ifndef BASILISK_BACKEND_H
 #define BASILISK_BACKEND_H
 
-#include <array>
+#include <map>
 #include "common.h"
-#include "command_buffer.h"
 
 
 namespace Vulkan
@@ -37,6 +40,7 @@ namespace Vulkan
 	struct ImageSet
 	{
 	public:
+		~ImageSet() = default;
 		friend class Device;
 
 		static VkImage LoadFromFile(VkDevice device, const std::string &filename, VkFormat format);
@@ -44,9 +48,34 @@ namespace Vulkan
 
 	private:
 		ImageSet();
-		~ImageSet() = default;
 
-		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
+		void Release(VkDevice device) //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
+		{
+			for (uint32_t i = 0; i < m_images.size(); ++i)
+			{
+				m_formats[i] = VK_FORMAT_UNDEFINED;
+
+				if (m_samplers[i]) {
+					vkDestroySampler(device, m_samplers[i], nullptr);
+					m_samplers[i] = VK_NULL_HANDLE;
+				}
+
+				if (m_views[i]) {
+					vkDestroyImageView(device, m_views[i], nullptr);
+					m_views[i] = VK_NULL_HANDLE;
+				}
+
+				if (m_memory[i]) {
+					vkFreeMemory(device, m_memory[i], nullptr);
+					m_memory[i] = VK_NULL_HANDLE;
+				}
+
+				if (m_images[i]) {
+					vkDestroyImage(device, m_images[i], nullptr);
+					m_images[i] = VK_NULL_HANDLE;
+				}
+			}
+		}
 
 		std::array<VkImage, count> m_images;
 		std::array<VkImageView, count> m_views;
@@ -54,26 +83,25 @@ namespace Vulkan
 		std::array<VkFormat, count> m_formats;
 		std::array<VkSampler, count> m_samplers;
 
-		glm::uvec3 m_size; //Any unused dimension should be set to 1
+		glm::uvec3 m_resolution; //Any unused dimension should be set to 1
 	};
 	typedef ImageSet<1> Image;
 
 	class SwapChain
 	{
 	public:
+		~SwapChain() = default;
 		friend class Device;
 	private:
 		SwapChain();
-		~SwapChain() = default;
 
-		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
+		void Release(VkDevice device, PFN_vkDestroySwapchainKHR func); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
 		VkSwapchainKHR m_swapChain;
 
 		//List of all backbuffers
 		std::vector<VkImage> m_backBuffers;
 		std::vector<VkImageView> m_backBufferViews;
-		std::vector<VkFramebuffer> m_frameBuffers;
 
 		uint32_t m_bufferIndex; //Which buffer to write to this frame
 	};
@@ -81,50 +109,13 @@ namespace Vulkan
 	class Shader
 	{
 	public:
+		~Shader() = default;
 		friend class Device;
 
 	private:
 		Shader();
-		~Shader() = default;
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
-
-		/**
-		Loads a shader from SPIR-V bytecode
-
-		\param[in] device The Vulkan device to use for creation
-		\param[in] data The bytecode to compile from
-		\param[in] stage Which pipeline stage this module will be bound to
-		\return If successful, a pointer to the resulting shader module. If failed, `nullptr`.
-		*/
-		static VkShaderModule FromSPIRVBlob(VkDevice device, char *data, VkShaderStageFlagBits stage);
-		/**
-		Loads a shader from a SPIR-V file
-
-		\param[in] device The Vulkan device to use for creation
-		\param[in] filename The location of the SPIR-V file
-		\param[in] stage Which pipeline stage this module will be bound to
-		\return If successful, a pointer to the resulting shader module. If failed, `nullptr`.
-		*/
-		static VkShaderModule FromSPIRVFile(VkDevice device, const std::string &filename, VkShaderStageFlags stage);
-		/**
-		Loads a shader from GLSL source
-
-		\param[in] device The Vulkan device to use for creation
-		\param[in] source The source to compile from
-		\param[in] stage Which pipeline stage this module will be bound to
-		\return If successful, a pointer to the resulting shader module. If failed, `nullptr`.
-		*/
-		static VkShaderModule FromGLSLSource(VkDevice device, const std::string &source, VkShaderStageFlags stage);
-		/**
-		Loads a shader from a GLSL file
-
-		\param[in] device The Vulkan device to use for creation
-		\param[in] filename The location of the GLSL file
-		\param[in] stage Which pipeline stage this module will be bound to
-		\return If successful, a pointer to the resulting shader module. If failed, `nullptr`.
-		*/
-		static VkShaderModule FromGLSLFile(VkDevice device, const std::string &filename, VkShaderStageFlags stage);
 
 		VkShaderModule m_module;
 	};
@@ -132,48 +123,66 @@ namespace Vulkan
 	struct Descriptor
 	{
 		uint32_t bindPoint;
-		DescriptorType type;
+		VkDescriptorType type;
 		VkShaderStageFlagBits visibility;
 	};
 	
 	class PipelineLayout
 	{
 	public:
+		~PipelineLayout() = default;
 		friend class Device;
 
 	private:
 		PipelineLayout();
-		~PipelineLayout() = default;
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 		
+<<<<<<< HEAD
+		VkDescriptorSetLayout m_setLayout;
+=======
 		VkDescriptorSetLayoutInfo m_setLayout;
+>>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 		VkPipelineLayout m_layout;
+	};
+
+	struct GraphicsPipelineState
+	{
+		static GraphicsPipelineState Create(const std::vector<VkDynamicState> &dynamicStateEnables, const std::vector<VkPipelineColorBlendAttachmentState> &blendAttachments);
+
+		VkPipelineVertexInputStateCreateInfo vertexInputState;
+		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState;
+		VkPipelineTessellationStateCreateInfo tesselationState;
+		VkPipelineViewportStateCreateInfo viewportState;
+		VkPipelineRasterizationStateCreateInfo rasterizationState;
+		VkPipelineMultisampleStateCreateInfo multisampleState;
+		VkPipelineDepthStencilStateCreateInfo depthStencilState;
+		VkPipelineColorBlendStateCreateInfo colorBlendState;
+		VkPipelineDynamicStateCreateInfo dynamicState;
 	};
 
 	class GraphicsPipeline
 	{
 	public:
+		~GraphicsPipeline() = default;
 		friend class Device;
 
 	private:
 		GraphicsPipeline();
-		~GraphicsPipeline() = default;
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
-		PipelineLayout m_layout; //Shared; do not deallocate
 		VkPipeline m_pipeline;
 	};
 
 	class ComputePipeline
 	{
 	public:
+		~ComputePipeline() = default;
 		friend class Device;
 
 	private:
 		ComputePipeline();
-		~ComputePipeline() = default;
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 	};
@@ -182,10 +191,10 @@ namespace Vulkan
 	class FrameBuffer
 	{
 	public:
+		~FrameBuffer() = default;
 		friend class Device;
 	private:
 		FrameBuffer();
-		~FrameBuffer() = default;
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
@@ -204,13 +213,26 @@ namespace Vulkan
 	class CommandBuffer
 	{
 	public:
+		~CommandBuffer() = default;
 		friend class Device;
 
 		bool Begin(bool disposable);
 
-		void WriteBundle(const VulkanCmdBuffer *bundle);
+		void BeginRendering(FrameBuffer target);
+
+		void BindGraphicsPipeline(const std::shared_ptr<GraphicsPipeline> &pipeline);
+
+		void BindComputePipeline(const std::shared_ptr<ComputePipeline> &pipeline);
+
+		void EndRendering();
 
 		bool End();
+
+
+
+		void WriteBundle(const std::shared_ptr<CommandBuffer> &bundle);
+
+		void Reset();
 
 		/**
 		Changes the layout of an image
@@ -222,14 +244,17 @@ namespace Vulkan
 		\param[in] oldQueueFamilyIndex Where to the image was previously viewable from
 		\param[in] newQueueFamilyIndex Where to the image will be viewable from
 		*/
-		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t oldQueueFamilyIndex = Device::renderQueue, uint32_t newQueueFamilyIndex = Device::renderQueue);
+		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t oldQueueFamilyIndex, uint32_t newQueueFamilyIndex);
 
+		//Just a crutch until I finish all the other functions
+		inline VkCommandBuffer Get() {
+			return m_commandBuffer;
+		}
 
 	private:
 		CommandBuffer();
-		~CommandBuffer() = default;
 
-		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
+		void Release(VkDevice device, VkCommandPool pool); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
 		VkCommandBuffer m_commandBuffer;
 	};
@@ -246,9 +271,19 @@ namespace Vulkan
 		std::vector<VkQueueFamilyProperties> queueDescs;
 	};
 
+	struct PresentableSurface
+	{
+		VkSurfaceCapabilitiesKHR caps;
+		VkSurfaceKHR surface;
+		VkFormat colorFormat;
+		uint32_t presentQueueIndex, renderQueueIndex;
+		std::vector<VkPresentModeKHR> presentModes;
+	};
+
 	class Device
 	{
 	public:
+		~Device() = default;
 		friend class Instance;
 
 		/**
@@ -281,11 +316,20 @@ namespace Vulkan
 		/**
 		Creates a graphics pipeline
 
+		\param[in] state The state of the pipeline at each stage
+		\param[in] frameBuffer The frame buffer this pipeline will alter
 		\param[in] layout What information this pipeline expects to receive when used
 		\param[in] shaders A list of shaders to bind to different stages of the pipeline
+<<<<<<< HEAD
+		\param[in] enableTesselation Enables tesselation. Note that if this is enabled, `state::tesselationState` must be filled out
 		\return If successful, a pointer to the resulting graphics pipeline. If failed, `nullptr`.
+
+		\todo Parameterize module entry point
+=======
+		\return If successful, a pointer to the resulting graphics pipeline. If failed, `nullptr`.
+>>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 		*/
-		std::shared_ptr<GraphicsPipeline> CreateGraphicsPipeline(const std::shared_ptr<PipelineLayout> &layout, const std::vector<Shader> &shaders);
+		std::shared_ptr<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineState &state, const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::map<VkShaderStageFlagBits, Shader> &shaders, bool enableTesselation = false);
 
 		/**
 		Creates a swap chain
@@ -336,17 +380,16 @@ namespace Vulkan
 
 	private:
 		Device();
-		~Device() = default;
 
 		void Release(); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
-		Instance *m_parent; //Devices do not own instances, so use a regular pointer. Primarily used to present to the screen.
+		Instance *m_parent;
 		GpuProperties m_gpuProps;
 
 		VkDevice m_device;
 		std::vector<VkQueue> m_queues;
 		std::array<VkCommandPool, 2> m_commandPools; //Separate pools for render and present queues
-		
+
 		//VK_KHR_swapchain function pointers
 		PFN_vkCreateSwapchainKHR pfnCreateSwapchainKHR;
 		PFN_vkDestroySwapchainKHR pfnDestroySwapchainKHR;
@@ -369,14 +412,6 @@ namespace Vulkan
 		bool MemoryTypeFromProps(uint32_t typeBits, VkFlags requirements_mask, uint32_t *typeIndex);
 	};
 
-	struct PresentableSurface
-	{
-		VkSurfaceCapabilitiesKHR caps;
-		VkSurfaceKHR surface;
-		VkFormat colorFormat;
-		std::vector<VkPresentModeKHR> presentModes;
-	};
-
 	/**
 	\brief Wraps a Vulkan instance
 	Can only be instantiated through `Vulkan::Initialize()`
@@ -384,43 +419,58 @@ namespace Vulkan
 	class Instance
 	{
 	public:
+		~Instance() = default;
 		friend std::shared_ptr<Instance> Initialize(const std::string &appName, uint32_t appVersion = 1);
 
 		/**
 		Counts and internally stores all connected GPUs
 
-		\return 
+		\return The number of GPUs Vulkan could find
 		*/
 		uint32_t FindGpus();
 
 		/**
-		Fetches 
+		Fetches details about a given GPU
+
+		\param[in] index 
+		\return 
 		*/
-		const GpuProperties &GetGpuProperties(uint32_t index);
+		const GpuProperties *GetGpuProperties(uint32_t index);
 		
 		/**
 		Creates a Vulkan device on the specified GPU
 
-		\param[in] gpuIndex Which GPU to use
-		\return If successful, 
+		\param[in] gpuIndex Which GPU to target
+		\return If successful, a pointer to the resulting device. If failed, `nullptr`.
 
-		\todo Multiple command pools
+		\todo Multithreaded command pools
 		*/
 		std::shared_ptr<Device> CreateDevice(uint32_t gpuIndex);
 
 		/**
+		Sets the presentation target to a Win32 window
 
+		\param[in] gpuIndex Which GPU to use
+		\param[in] hWnd Handle to the Win32 window
+		\param[in] hInstance Handle to the Win32 instance
+		\return `true` if successful. `false` if failed.
 		*/
-		bool HookWin32Window(HWND hWnd, HINSTANCE hInstance);
+		bool HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance);
 
 		/**
+		Sets the presentation target to a monitor
 
+		\param[in] monitorIndex Which monitor to start on
+		\return `true` if successful. `false` if failed.
 		*/
-		bool HookMonitor(uint32_t index);
+		bool HookMonitor(uint32_t monitorIndex);
+
+		inline const PresentableSurface *GetPresentTarget() {
+			return m_presentTarget;
+		}
 
 	private:
 		Instance();
-		~Instance() = default;
 
 		void Release(); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
@@ -428,9 +478,9 @@ namespace Vulkan
 		std::vector<GpuProperties> m_gpuProps;
 		std::vector<VkPhysicalDevice> m_gpus;
 
-		//Add getters later. Not sure what information the device needs to present.
-		PresentableSurface m_windowTarget;
-		PresentableSurface m_monitorTarget;
+
+		//Locations the device could potentially present to
+		PresentableSurface *m_presentTarget;
 
 		//VK_KHR_surface function pointers
 		PFN_vkDestroySurfaceKHR pfnDestroySurfaceKHR;
@@ -438,7 +488,6 @@ namespace Vulkan
 		PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR pfnGetPhysicalDeviceSurfaceCapabilitiesKHR;
 		PFN_vkGetPhysicalDeviceSurfaceFormatsKHR pfnGetPhysicalDeviceSurfaceFormatsKHR;
 		PFN_vkGetPhysicalDeviceSurfacePresentModesKHR pfnGetPhysicalDeviceSurfacePresentModesKHR;
-
 		//VK_KHR_win32_surface function pointers
 		PFN_vkCreateWin32SurfaceKHR pfnCreateWin32SurfaceKHR;
 		PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR pfnGetPhysicalDeviceWin32PresentationSupportKHR;
@@ -449,10 +498,10 @@ namespace Vulkan
 	Boots up Vulkan
 
 	\param[in] appName The title of your application
-	\param[in] appVersion The version of your application
+	\param[in] appVersion The version of your application. Defaults to 1.
 	\return The number of GPUs connected to this computer. 0 indicates failure.
 	*/
-	std::shared_ptr<Instance> Initialize(const std::string &appName, uint32_t appVersion = 1);
+	std::shared_ptr<Instance> Initialize(const std::string &appName, uint32_t appVersion); //appVersion was forward-declared to default to 1 as a friend to `Instance`
 }
 
 #endif

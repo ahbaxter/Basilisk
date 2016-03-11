@@ -1,7 +1,7 @@
 /**
 \file   common.h
 \author Andrew Baxter
-\date   March 9, 2015
+\date   March 10, 2015
 
 Includes universally-required headers and defines some rudimentary functions
 
@@ -50,10 +50,10 @@ inline T Clamp(const T &val, const T &min, const T &max)
 		min);
 }
 
-template<typename T> std::enable_if<std::is_integral_type<T>::value>
+template<typename T, typename std::enable_if<std::is_integral<T>::value>::type>
 inline bool PowerOfTwo(const T &val)
 {
-	return (!(val <= 0) && !(val &(val - 1))
+	return (!(val <= 0) && !(val &(val - 1)));
 }
 
 
