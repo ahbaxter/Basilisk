@@ -1,9 +1,6 @@
 #include <SDL2/include/SDL.h>
 #include <SDL2/include/SDL_syswm.h> //platform info
-#include <stdio.h>
 #include <iostream>
-#include <string>
-#include <chrono>
 
 #include "../include/basilisk.h"
 
@@ -12,10 +9,90 @@
 #pragma comment(lib, "Basilisk.lib")
 
 HWND hWnd;
-constexpr const char *appName = "Basilisk";
-constexpr uint32_t appVersion = 1;
 HINSTANCE hInstance;
-constexpr bool FULL_SCREEN = false;
+constexpr const char *appName = "Hello World";
+constexpr uint32_t appVersion = 1;
+
+
+int Dump()
+{
+	OutputDebugString("Errors:\n");
+	while (Basilisk::errors.size() > 0)
+		OutputDebugString((Basilisk::errors.front() + "\n").c_str());
+
+	OutputDebugString("Warnings:\n");
+	while (Basilisk::warnings.size() > 0)
+		OutputDebugString((Basilisk::warnings.front() + "\n").c_str());
+
+	return 1;
+}
+
+int main(int argc, char *argv[])
+{
+	hInstance = GetModuleHandle(NULL);
+
+	SDL_Init(SDL_INIT_VIDEO);
+
+	const int w = 720, h = 480;
+	
+	SDL_DisplayMode monitor;
+	if (SDL_GetDesktopDisplayMode(0, &monitor) != 0) {
+		SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
+		return 1;
+	}
+
+	//get window handle to initialize with
+	SDL_Window *window = SDL_CreateWindow(appName, monitor.w/2-w/2, monitor.h/2-h/2, w, h, 0); //Center in screen
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(window, &wmInfo);
+	hWnd = wmInfo.info.win.window;
+
+
+
+	auto instance = Vulkan::Initialize(appName, appVersion);
+	if (!instance) return Dump();
+	uint32_t numGpus = instance->FindGpus();
+	if (!numGpus) return Dump();
+	if (!instance->HookWin32Window(0, hWnd, hInstance)) return Dump();
+
+	auto device = instance->CreateDevice(0);
+	if (!device) return Dump();
+	auto cmdSetup = device->CreateCommandBuffer();
+	cmdSetup->Begin(true);
+	if (!cmdSetup) return Dump();
+
+	auto swapChain = device->CreateSwapChain(cmdSetup, { w, h }, 2); //Double-buffered 720x480 window
+	if (!swapChain) return Dump();
+	auto frameBuffer = device->CreateFrameBuffer({ w, h }, { VK_FORMAT_R8G8B8_UNORM }, false); //24-bit 720x480 render targets (with no depth buffer)
+	if (!frameBuffer) return Dump();
+
+	auto pipelineLayout = device->CreatePipelineLayout({}); //Empty pipeline layout
+	if (!pipelineLayout) return Dump();
+	auto pipeline = device->CreateGraphicsPipeline(frameBuffer, pipelineLayout, {}); //Bare-bones graphics pipeline
+	if (!pipeline) return Dump();
+
+	cmdSetup->End();
+	device->ExecuteCommands({ cmdSetup });
+	device->Join();
+
+	SDL_Event windowEvent;
+	unsigned long long fence = 0;
+	SDL_PollEvent(&windowEvent);
+
+	while (windowEvent.type != SDL_QUIT)
+	{
+		device->Join();
+
+		//Render here
+
+		device->Join();
+		SDL_PollEvent(&windowEvent);
+	}
+
+	return 0;
+}
+
 
 /*
 LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam)
@@ -192,93 +269,3 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pScmdline,
 
 
 */
-
-
-int main(int argc, char *argv[])
-{
-	hInstance = GetModuleHandle(NULL);
-
-	SDL_Init(SDL_INIT_VIDEO);
-
-	const int w = 720, h = 480;
-	
-	SDL_DisplayMode monitor;
-	if (SDL_GetDesktopDisplayMode(0, &monitor) != 0) {
-		SDL_Log("SDL_GetDesktopDisplayMode failed: %s", SDL_GetError());
-		return 1;
-	}
-
-	//get window handle to initialize Vulkan with
-
-	SDL_Window *window = SDL_CreateWindow("Hello World", monitor.w/2-w/2, monitor.h/2-h/2, w, h, 0);
-	SDL_SysWMinfo wmInfo;
-	SDL_VERSION(&wmInfo.version); // initialize info structure with SDL version info
-	SDL_GetWindowWMInfo(window, &wmInfo);
-
-#ifdef SDL_VIDEO_DRIVER_WINDOWS
-	hWnd = wmInfo.info.win.window;
-
-
-	Vulkan::Image *imgTest;
-	size_t x = sizeof(Vulkan::Image);
-	sizeof(imgTest->__padding);
-
-	Vulkan::Instance instance;
-	instance.Initialize(appName, appVersion);
-	uint32_t numGpus = instance.FindGpus();
-
-	Vulkan::Device *device = instance.CreateDevice(0);
-	VulkanDevice *device;
-	if (Failed(instance.CreateDevice(device, 0)))
-	{
-		OutputDebugString(Basilisk::errorMessage.c_str());
-		return 1;
-	}
-
-	VulkanSwapChain *swapChain;
-	if (Failed(device->CreateSwapChain(swapChain, { 720, 480 }, 2, 1)))
-	{
-		OutputDebugString(Basilisk::errorMessage.c_str());
-		return 1;
-	}
-
-	VulkanCmdBuffer *cmdBuffer;
-	if (Failed(device->CreateCommandBuffer(cmdBuffer)))
-	{
-		OutputDebugString(Basilisk::errorMessage.c_str());
-		return 1;
-	}
-
-#else
-#error Only coded for Windows (for now)!
-#endif
-
-	SDL_Event windowEvent;
-	unsigned long long fence = 0;
-	SDL_PollEvent(&windowEvent);
-
-	while (windowEvent.type != SDL_QUIT)
-	{
-		/*if (windowEvent.type == SDL_KEYDOWN)
-			if (windowEvent.key.keysym.sym == SDLK_f)
-				device.setFullscreen(false);*/
-
-		if (device.beginFrame(fence))
-		{
-			if (device.execute(nullptr))
-				fence = device.present();
-			}
-		}
-
-		//{
-		//	OutputDebugString(Basilisk::error.getDetails());
-		//	device.shutdown();
-		//	return 0;
-		//}
-		SDL_PollEvent(&windowEvent);
-	}
-	
-	device->Release();
-
-	return 0;
-}

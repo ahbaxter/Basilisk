@@ -1,7 +1,7 @@
 /**
 \file   common.h
 \author Andrew Baxter
-\date   March 10, 2015
+\date   March 11, 2015
 
 Includes universally-required headers and defines some rudimentary functions
 
@@ -17,6 +17,7 @@ Includes universally-required headers and defines some rudimentary functions
 #include <algorithm>
 #include <string>
 #include <memory>
+#include <functional>
 #include <glm/glm/glm.hpp>
 
 #ifdef _WIN32

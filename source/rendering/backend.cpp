@@ -1,7 +1,7 @@
 /**
 \file   backend.cpp
 \author Andrew Baxter
-\date   March 10, 2016
+\date   March 11, 2016
 
 Defines the behavior of the Vulkan rendering backend
 
@@ -74,116 +74,6 @@ void PipelineLayout::Release(VkDevice device)
 		vkDestroyDescriptorSetLayout(device, m_setLayout, nullptr);
 		m_setLayout = VK_NULL_HANDLE;
 	}
-}
-
-GraphicsPipelineState GraphicsPipelineState::Create(const std::vector<VkDynamicState> &dynamicStateEnables, const std::vector<VkPipelineColorBlendAttachmentState> &blendAttachments)
-{
-		return {
-		{ //Vertex input state
-			VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-			nullptr,  //Reserved
-			0,        //No flags: reserved
-			0,        //Binding description count
-			nullptr,  //Binding descriptions
-			0,        //Attribute description count
-			nullptr   //Attribute descriptions
-		},
-		{ //Input assembly state
-			VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-			nullptr, //Reserved
-			0, //No flags: reserved
-			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, //Primitive topology
-			VK_FALSE, //Enable primitive restart
-		},
-		{
-			VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
-			nullptr, //Reserved
-			0,       //No flags: reserved
-			1        //Patch control points
-		}, //Tesselation state
-		{ //Viewport state
-			VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-			nullptr,  //Reserved
-			0,        //No flags: reserved
-			1,        //Viewport count
-			nullptr,  //Viewports
-			1,        //Scissor count
-			nullptr   //Scissors
-		},
-		{ //Rasterization state
-			VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-			nullptr,                  //Reserved
-			0,                        //No flags: reserved
-			VK_TRUE,                  //Enable depth clamp
-			VK_FALSE,                 //Enable rasterizer discard
-			VK_POLYGON_MODE_FILL,     //Polygon mode: [fill], wireframe, dots
-			VK_CULL_MODE_BACK_BIT,    //Cull mode: cull back-facing polygons
-			VK_FRONT_FACE_CLOCKWISE,  //Front face: discard zero-area polygons
-			VK_FALSE,                 //Enable depth bias
-			0.0f,                     //Depth bias constant factor
-			0.0f,                     //Depth bias clamp
-			0.0f,                     //Depth bias slope factor
-			1.0f                      //Line width
-		},
-		{ //Multisample state
-			VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-			nullptr,                //Reserved
-			0,                      //No flags: reserved
-			VK_SAMPLE_COUNT_1_BIT,  //Rasterization samples: 1
-			VK_FALSE,               //Enable sample shading
-			0.0f,                   //Min sample shading
-			nullptr,                //Sample mask
-			VK_FALSE,               //Enable alpha-to-coverage
-			VK_FALSE                //Enable alpha-to-one
-		},
-		{ //Depth stencil state
-			VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-			nullptr,   //Reserved
-			0,         //No flags: reserved
-			VK_TRUE,   //Enable depth test
-			VK_TRUE,   //Enable depth write
-			VK_COMPARE_OP_LESS_OR_EQUAL, //Depth compare operation
-			VK_FALSE,  //Enable depth bounds testing
-			VK_FALSE,  //Enable stencil testing
-			{          //Front-facing polygon stencil behavior
-				VK_STENCIL_OP_KEEP,     //On fail: keep the old value
-				VK_STENCIL_OP_KEEP,     //On pass: keep the old value
-				VK_STENCIL_OP_KEEP,     //On depth fail: keep the old value
-				VK_COMPARE_OP_ALWAYS,   //Compare operation: really doesn't matter, since pass and fail have the same result
-				0,     //Compare mask
-				0,     //Write mask
-				0,     //Reference
-			},
-			{          //Back-facing polygon stencil behavior (identical to front, since stencil is disabled)
-				VK_STENCIL_OP_KEEP,     //On fail: keep the old value
-				VK_STENCIL_OP_KEEP,     //On pass: keep the old value
-				VK_STENCIL_OP_KEEP,     //On depth fail: keep the old value
-				VK_COMPARE_OP_ALWAYS,   //Compare operation: really doesn't matter, since pass and fail have the same result
-				0,     //Compare mask
-				0,     //Write mask
-				0,     //Reference
-			},
-			0,         //Min depth bounds
-			1          //Max depth bounds
-		},
-		{ //Color blend state
-			VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-			nullptr,                  //Reserved
-			0,                        //No flags: reserved
-			VK_FALSE,                 //Enable logic operation
-			VK_LOGIC_OP_CLEAR,        //Logic operation: doesn't matter, since it's disabled
-			static_cast<uint32_t>(blendAttachments.size()),  //Color blend attachment count
-			blendAttachments.data(),  //Color blend attachments
-			{0.0f, 0.0f, 0.0f, 0.0f}  //Blend constants
-		},
-		{ //Dynamic state
-			VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-			nullptr,                     //Reserved
-			0,                           //No flags: reserved
-			static_cast<uint32_t>(dynamicStateEnables.size()),  //Dynamic state count
-			dynamicStateEnables.data()   //Dynamic states
-		},
-	};
 }
 
 void GraphicsPipeline::Release(VkDevice device)
@@ -352,9 +242,14 @@ Device::Device() : m_parent(nullptr), m_device(VK_NULL_HANDLE),
 	m_gpuProps = {};
 }
 
+void Device::Join()
+{
+	vkDeviceWaitIdle(m_device);
+}
+
 std::shared_ptr<CommandBuffer> Device::CreateCommandBuffer(bool bundle, uint32_t poolIndex)
 {
-	auto out = std::make_shared<CommandBuffer>(new CommandBuffer,
+	std::shared_ptr<CommandBuffer> out(new CommandBuffer,
 		[=](CommandBuffer *ptr)
 		{
 			ptr->Release(m_device, m_commandPools[poolIndex]);
@@ -451,7 +346,7 @@ std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<Command
 	////Create the swap chain
 	//
 
-	auto out = std::make_shared<SwapChain>(new SwapChain,
+	std::shared_ptr<SwapChain> out(new SwapChain,
 		[=](SwapChain *ptr) {
 			ptr->Release(m_device, pfnDestroySwapchainKHR);
 			delete ptr;
@@ -549,7 +444,7 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	//Meets all prerequisites
 
 	//Preparations...
-	auto out = std::make_shared<FrameBuffer>(new FrameBuffer,
+	std::shared_ptr<FrameBuffer> out(new FrameBuffer,
 		[=](FrameBuffer *ptr) {
 			ptr->Release(m_device);
 			delete ptr;
@@ -703,8 +598,7 @@ bool Device::MemoryTypeFromProps(uint32_t typeBits, VkFlags requirements_mask, u
 
 std::shared_ptr<PipelineLayout> Device::CreatePipelineLayout(const std::vector<Descriptor> &bindings)
 {
-<<<<<<< HEAD
-	auto out = std::make_shared<PipelineLayout>(new PipelineLayout,
+	std::shared_ptr<PipelineLayout> out(new PipelineLayout,
 		[=](PipelineLayout *ptr) {
 			ptr->Release(m_device);
 			delete ptr;
@@ -749,9 +643,9 @@ std::shared_ptr<PipelineLayout> Device::CreatePipelineLayout(const std::vector<D
 	return out;
 }
 
-std::shared_ptr<Shader> Device::CreateShaderFromSPIRV(uint32_t size, uint32_t *bytecode)
+std::shared_ptr<Shader> Device::CreateShaderFromSPIRV(const std::vector<uint32_t> &bytecode)
 {
-	auto out = std::make_shared<Shader>(new Shader,
+	std::shared_ptr<Shader> out(new Shader,
 		[=](Shader *ptr) {
 			ptr->Release(m_device);
 			delete ptr;
@@ -762,10 +656,10 @@ std::shared_ptr<Shader> Device::CreateShaderFromSPIRV(uint32_t size, uint32_t *b
 	
 	VkShaderModuleCreateInfo module_info = {
 		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-		nullptr,   //Reserved
-		0,         //No flags: reserved
-		size,      //Bytecode size in bytes
-		bytecode   //Bytecode data
+		nullptr,          //Reserved
+		0,                //No flags: reserved
+		bytecode.size(),  //Bytecode size in bytes
+		bytecode.data()   //Bytecode data
 	};
 
 	res = vkCreateShaderModule(m_device, &module_info, nullptr, &out->m_module);
@@ -781,7 +675,7 @@ std::shared_ptr<Shader> Device::CreateShaderFromSPIRV(uint32_t size, uint32_t *b
 
 std::shared_ptr<Shader> Device::CreateShaderFromGLSL(const std::string &source, VkShaderStageFlagBits stage)
 {
-	auto out = std::make_shared<Shader>(new Shader,
+	std::shared_ptr<Shader> out(new Shader,
 		[=](Shader *ptr) {
 			ptr->Release(m_device);
 			delete ptr;
@@ -817,63 +711,200 @@ std::shared_ptr<Shader> Device::CreateShaderFromGLSL(const std::string &source, 
 	return out;
 }
 
-std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const GraphicsPipelineState &state, const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::map<VkShaderStageFlagBits, Shader> &shaders, bool enableTesselation)
+std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::vector<Shader> &shaders, uint32_t subpassIndex, uint32_t patchCtrlPoints)
 {
+	VkGraphicsPipelineCreateInfo pipeline_info;
 
-	//Passes all prerequisites
 
-	auto out = std::make_shared<GraphicsPipeline>(new GraphicsPipeline,
+	std::vector<VkPipelineShaderStageCreateInfo> stage_info(shaders.size());
+	for (uint32_t i = 0; i < shaders.size(); ++i)
+	{
+		stage_info[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		stage_info[i].pNext = nullptr;
+		stage_info[i].flags = 0;
+		stage_info[i].stage = shaders[i].m_stage;
+		stage_info[i].module = shaders[i].m_module;
+		stage_info[i].pName = shaders[i].m_entryPoint.c_str();
+		stage_info[i].pSpecializationInfo = nullptr;
+	}
+	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipeline_info.pNext = nullptr;
+	pipeline_info.flags = 0;
+	pipeline_info.stageCount = shaders.size();
+	pipeline_info.pStages = stage_info.data();
+
+
+	VkPipelineVertexInputStateCreateInfo vertex_input = {
+		VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		nullptr,  //Reserved
+		0,        //No flags: reserved
+		0,        //Binding description count
+		nullptr,  //Binding descriptions
+		0,        //Attribute description count
+		nullptr   //Attribute descriptions
+	};
+	pipeline_info.pVertexInputState = &vertex_input;
+	
+
+	VkPipelineInputAssemblyStateCreateInfo input_assembly = { //Input assembly state
+		VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		nullptr, //Reserved
+		0, //No flags: reserved
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, //Primitive topology
+		VK_FALSE, //Enable primitive restart
+	};
+	pipeline_info.pInputAssemblyState = &input_assembly;
+
+
+	VkPipelineTessellationStateCreateInfo tesselation = {
+		VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+		nullptr,         //Reserved
+		0,               //No flags: reserved
+		patchCtrlPoints  //Patch control points
+	};
+	if (patchCtrlPoints > 0)
+		pipeline_info.pTessellationState = &tesselation;
+	else
+		pipeline_info.pTessellationState = nullptr;
+
+
+	VkPipelineViewportStateCreateInfo viewport = {
+		VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		nullptr,  //Reserved
+		0,        //No flags: reserved
+		1,        //Viewport count
+		nullptr,  //Viewports
+		1,        //Scissor count
+		nullptr   //Scissors
+	};
+	pipeline_info.pViewportState = &viewport;
+
+
+	VkPipelineRasterizationStateCreateInfo rasterization = {
+		VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		nullptr,                  //Reserved
+		0,                        //No flags: reserved
+		VK_TRUE,                  //Enable depth clamp
+		VK_FALSE,                 //Enable rasterizer discard
+		VK_POLYGON_MODE_FILL,     //Polygon mode: [fill], wireframe, dots
+		VK_CULL_MODE_BACK_BIT,    //Cull mode: cull back-facing polygons
+		VK_FRONT_FACE_CLOCKWISE,  //Front face: discard zero-area polygons
+		VK_FALSE,                 //Enable depth bias
+		0.0f,                     //Depth bias constant factor
+		0.0f,                     //Depth bias clamp
+		0.0f,                     //Depth bias slope factor
+		1.0f                      //Line width
+	};
+	pipeline_info.pRasterizationState = &rasterization;
+
+
+	VkPipelineMultisampleStateCreateInfo multisample = {
+		VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		nullptr,                //Reserved
+		0,                      //No flags: reserved
+		VK_SAMPLE_COUNT_1_BIT,  //Rasterization samples: 1
+		VK_FALSE,               //Enable sample shading
+		0.0f,                   //Min sample shading
+		nullptr,                //Sample mask
+		VK_FALSE,               //Enable alpha-to-coverage
+		VK_FALSE                //Enable alpha-to-one
+	};
+	pipeline_info.pMultisampleState = &multisample;
+
+
+	VkPipelineDepthStencilStateCreateInfo depth_stencil = {
+		VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+		nullptr,   //Reserved
+		0,         //No flags: reserved
+		VK_TRUE,   //Enable depth test
+		VK_TRUE,   //Enable depth write
+		VK_COMPARE_OP_LESS_OR_EQUAL, //Depth compare operation
+		VK_FALSE,  //Enable depth bounds testing
+		VK_FALSE,  //Enable stencil testing
+		{          //Front-facing polygon stencil behavior
+			VK_STENCIL_OP_KEEP,     //On fail: keep the old value
+			VK_STENCIL_OP_KEEP,     //On pass: keep the old value
+			VK_STENCIL_OP_KEEP,     //On depth fail: keep the old value
+			VK_COMPARE_OP_ALWAYS,   //Compare operation: really doesn't matter, since pass and fail have the same result
+			0,     //Compare mask
+			0,     //Write mask
+			0,     //Reference
+		},
+		{          //Back-facing polygon stencil behavior (identical to front, since stencil is disabled)
+			VK_STENCIL_OP_KEEP,     //On fail: keep the old value
+			VK_STENCIL_OP_KEEP,     //On pass: keep the old value
+			VK_STENCIL_OP_KEEP,     //On depth fail: keep the old value
+			VK_COMPARE_OP_ALWAYS,   //Compare operation: really doesn't matter, since pass and fail have the same result
+			0,     //Compare mask
+			0,     //Write mask
+			0,     //Reference
+		},
+		0,         //Min depth bounds
+		1          //Max depth bounds
+	};
+	pipeline_info.pDepthStencilState = &depth_stencil;
+
+
+	std::vector<VkPipelineColorBlendAttachmentState> blend_attachments(frameBuffer->NumAttachments());
+	for (auto &iter : blend_attachments)
+	{
+		iter.blendEnable = VK_FALSE;
+		iter.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+		iter.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+		iter.colorBlendOp = VK_BLEND_OP_ADD;
+		iter.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		iter.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+		iter.alphaBlendOp = VK_BLEND_OP_ADD;
+		iter.colorWriteMask = 0xF;
+	}
+	VkPipelineColorBlendStateCreateInfo color_blend = {
+		VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		nullptr,                    //Reserved
+		0,                          //No flags: reserved
+		VK_FALSE,                   //Enable logic operation
+		VK_LOGIC_OP_CLEAR,          //Logic operation: doesn't matter, since it's disabled
+		frameBuffer->NumAttachments(),  //Color blend attachment count
+		blend_attachments.data(),   //Color blend attachments
+		{ 0.0f, 0.0f, 0.0f, 0.0f }  //Blend constants
+	};
+	pipeline_info.pColorBlendState = &color_blend;
+
+
+	std::array<VkDynamicState, 3> dynamic_enables = {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR,
+		VK_DYNAMIC_STATE_LINE_WIDTH
+	};
+	VkPipelineDynamicStateCreateInfo dynamic = {
+		VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		nullptr,                  //Reserved
+		0,                        //No flags: reserved
+		dynamic_enables.size(),  //Dynamic state count
+		dynamic_enables.data()   //Dynamic state enables
+	};
+	pipeline_info.pDynamicState = &dynamic;
+
+	pipeline_info.layout = layout->m_layout;
+	pipeline_info.renderPass = frameBuffer->m_renderPass;
+	pipeline_info.subpass = subpassIndex;
+	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+	pipeline_info.basePipelineIndex = -1;
+
+	std::shared_ptr<GraphicsPipeline> out(new GraphicsPipeline,
 		[=](GraphicsPipeline *ptr) {
-=======
-	auto out = std::make_shared(new PipelineLayout,
-		[=](PipelineLayout *ptr) {
->>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 			ptr->Release(m_device);
 			delete ptr;
 			ptr = nullptr;
 		}
 	);
-<<<<<<< HEAD
-	VkResult res;
 
-	std::vector<VkPipelineShaderStageCreateInfo> stage_info(shaders.size());
-	uint32_t i = 0;
-	for (auto &iter : shaders)
+	VkResult res = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &out->m_pipeline);
+	if (Failed(res))
 	{
-		stage_info[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		stage_info[i].pNext = nullptr;
-		stage_info[i].flags = 0;
-		stage_info[i].stage = iter.first;
-		stage_info[i].module = iter.second.m_module;
-		stage_info[i].pName = "main";
-		stage_info[i].pSpecializationInfo = nullptr;
-
-		i++;
+		Basilisk::errors.push("Vulkan::Device::CreateGraphicsPipeline() could not create the graphics pipeline");
+		return nullptr;
 	}
-	
-	VkGraphicsPipelineCreateInfo pipeline_info = {
-		VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-		nullptr,  //Reserved
-		0,        //No flags
-		static_cast<uint32_t>(stage_info.size()),  //Stage count
-		stage_info.data(),  //Stages
-		&state.vertexInputState,
-		&state.inputAssemblyState,
-		enableTesselation ? &state.tesselationState : nullptr,
-		&state.viewportState,
-		&state.rasterizationState,
-		&state.multisampleState,
-		&state.depthStencilState,
-		&state.colorBlendState,
-		&state.dynamicState,
-		layout->m_layout,
-		frameBuffer->m_renderPass,
-		0,               //Subpass
-		VK_NULL_HANDLE,  //Base pipeline handle
-		0                //Base pipeline index
-	};
 
-	res = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &out->m_pipeline);
 
 	return out;
 }
@@ -895,123 +926,21 @@ void Instance::Release()
 	{
 		vkDestroyInstance(m_instance, nullptr);
 		m_instance = nullptr;
-=======
-	
-	std::vector<VkDescriptorSetLayoutBinding> layout_bindings(bindings.size());
-	for (uint32_t i = 0; i < bindings.size(); ++i)
-	{
-		layout_bindings[i] = Init<VkDescriptorSetLayoutBinding>::Create(bindings.bindPoint, bindings.type, bindings.visibility);
-	}
-	
-	VkDescriptorSetLayoutCreateInfo set_info = Init<VkDescriptorSetLayoutCreateInfo>(layout_bindings);
-
-	VkResult res = vkCreateDescriptorSetLayout(m_device, &set_info, nullptr,
-		&out->setLayout);
-	if (Failed(res))
-	{
-		Basilisk::errors.push("Vulkan::Device::CreatePipelineLayout() could not create the descriptor set layout");
-		return nullptr;
-	}
-	
-	VkPipelineLayoutCreateInfo pipeline_info = {
-		VK_STRUCTURE_TYPE_PIPELINE_CREATE_INFO,
-		nullptr,                 //Reserved
-		0,                       //No flags: reserved
-		layout_binding.count(),  //Descriptor set layout count
-		&out->m_setLayout,       //Descriptor set layouts
-		0,                       //Push constant range count
-		VK_NULL_HANDLE           //Push constant ranges
-	};
-	
-	res = vkCreatePipelineLayout(m_device, &pipeline_info, nullptr, &out->m_layout);
-	if (Failed(res))
-	{
-		Basilisk::errors.push("Vulan::Device::CreatePipelineLayout() could not create the pipeline layout");
-		return nullptr;
-	}
-	
-	
-	return out;
-}
-
-std::shared_ptr<Shader> Device::CreateShaderFromSPIRV(uint32_t size, uint32_t *bytecode)
-{
-	auto out = std::make_shared<Shader>(new Shader,
-		[=](Shader *ptr) {
-			ptr->Release(m_device);
-			delete ptr;
-			ptr = nullptr;
-		}
-	);
-	VkResult res;
-	
-	VkShaderModuleCreateInfo module_info = {
-		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-		nullptr,   //Reserved
-		0,         //No flags: reserved
-		size,      //Bytecode size in bytes
-		bytecode   //Bytecode data
-	};
-
-	res = vkCreateShaderModule(m_device, &module_info, nullptr, &out->m_module);
-	if (Failed(res))
-	{
-		Basilisk::errors.push("Vulkan::Device::CreateShaderFromSPIRV() could not create the shader module");
-		return nullptr;
-	}
-
-
-	return out;
-}
-
-std::shared_ptr<Shader> Device::CreateShaderFromGLSL(const std::string &source, VkShaderStageFlagBits stage)
-{
-	auto out = std::make_shared<Shader>(new Shader,
-		[=](Shader *ptr) {
-			ptr->Release(m_device);
-			delete ptr;
-			ptr = nullptr;
-		}
-	);
-	VkResult res;
-	
-	uint32_t spirvSize = 3 * sizeof(uint32_t) + size + 1;
-	uint32_t *spirvCode = new uint32_t[spirvSize];
-	spirvCode[0] = 0x07230203;
-	spirvCode[1] = 0;
-	spirvCode[2] = stage;
-	memcpy(spirvCode[3], source.c_str(), spirvSize + 1); //1 more byte for escape character
-	
-	VkShaderModuleCreateInfo module_info = {
-		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-		nullptr,    //Reserved
-		0,          //No flags: reserved
-		spirvSize,  //Bytecode size in bytes
-		spirvCode   //Bytecode data
-	};
-
-	res = vkCreateShaderModule(m_device, &module_info, nullptr, &out->m_module);
-	delete[] spirvCode;
-	if (Failed(res))
-	{
-		Basilisk::errors.push("Vulkan::Device::CreateShaderFromGLSL() could not create the shader module");
-		return nullptr;
->>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 	}
 }
 
 Instance::Instance() : m_instance(VK_NULL_HANDLE)
 {}
 
-<<<<<<< HEAD
+
 std::shared_ptr<Instance> Vulkan::Initialize(const std::string &appName, uint32_t appVersion)
 {
-	auto out = std::make_shared<Instance>(new Instance,
+	std::shared_ptr<Instance> out(new Instance,
 		[](Instance *ptr) { //Custom deallocator
-		ptr->Release();
-		delete ptr;
-		ptr = nullptr;
-	}
+			ptr->Release();
+			delete ptr;
+			ptr = nullptr;
+		}
 	);
 
 	//Should I let them specify application version as well?
@@ -1129,6 +1058,17 @@ uint32_t Instance::FindGpus()
 	return count;
 }
 
+const GpuProperties *Instance::GetGpuProperties(uint32_t gpuIndex)
+{
+	if (m_gpuProps.size() < 0 || gpuIndex > m_gpuProps.size() - 1)
+	{
+		Basilisk::warnings.push("Vulkan::Instance::GetGpuProperties() called on a nonexisted GPU (at index " + std::to_string(gpuIndex) + ")");
+		return nullptr;
+	}
+	else
+		return &m_gpuProps[gpuIndex];
+}
+
 std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 {
 	if (m_gpus.size() == 0 || gpuIndex > m_gpus.size() - 1)
@@ -1149,28 +1089,13 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 
 	//Meets all prerequisites
 
-	auto out = std::make_shared<Device>(new Device,
+	std::shared_ptr<Device> out(new Device,
 		[](Device *ptr) {
 			ptr->Release();
-=======
-	return out;
-}
-
-/* Separate into Device::CreatePipelineLayout and Device::CreateShader functions
-std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shared_ptr<PipelineLayout> &layout, const std::vector<Shader> &shaders)
-{
-
-	//Passes all prerequisites
-
-	auto out = std::make_shared<GraphicsPipeline>(new GraphicsPipeline,
-		[=](GraphicsPipeline *ptr) {
-			ptr->Release(m_device);
->>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 			delete ptr;
 			ptr = nullptr;
 		}
 	);
-<<<<<<< HEAD
 	out->m_parent = this;
 	out->m_gpuProps = m_gpuProps[gpuIndex];
 	VkResult res;
@@ -1426,8 +1351,3 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 }
 
 #pragma endregion
-=======
-	VkResult res;
-}
-*/
->>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f

@@ -1,18 +1,14 @@
 /**
 \file   backend.h
 \author Andrew Baxter
-\date   March 10, 2016
+\date   March 11, 2016
 
 The virtual interface with the Vulkan API
 
-\todo Integrate command buffers
-\todo Figure out what I'm doing with render and present queues
+
+\todo Implement missing functions
 \todo Look into debug/validation layers
-<<<<<<< HEAD
 \todo Boot up Vulkan with a monitor target
-=======
-\todo Boot up Vulkan without a render output, or with a monitor target
->>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 \todo Can FrameBuffer image memory be contiguous?
 
 */
@@ -20,7 +16,6 @@ The virtual interface with the Vulkan API
 #ifndef BASILISK_BACKEND_H
 #define BASILISK_BACKEND_H
 
-#include <map>
 #include "common.h"
 
 
@@ -112,11 +107,15 @@ namespace Vulkan
 		~Shader() = default;
 		friend class Device;
 
+		~ErrorForReminder_As(VkShaderStageFlagBits stage, const std::string &entryPoint);
+
 	private:
 		Shader();
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
+		std::string m_entryPoint;
+		VkShaderStageFlagBits m_stage;
 		VkShaderModule m_module;
 	};
 	
@@ -127,6 +126,10 @@ namespace Vulkan
 		VkShaderStageFlagBits visibility;
 	};
 	
+	/**
+
+	\todo Encapsulate binding descriptions?
+	*/
 	class PipelineLayout
 	{
 	public:
@@ -138,27 +141,8 @@ namespace Vulkan
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 		
-<<<<<<< HEAD
 		VkDescriptorSetLayout m_setLayout;
-=======
-		VkDescriptorSetLayoutInfo m_setLayout;
->>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 		VkPipelineLayout m_layout;
-	};
-
-	struct GraphicsPipelineState
-	{
-		static GraphicsPipelineState Create(const std::vector<VkDynamicState> &dynamicStateEnables, const std::vector<VkPipelineColorBlendAttachmentState> &blendAttachments);
-
-		VkPipelineVertexInputStateCreateInfo vertexInputState;
-		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState;
-		VkPipelineTessellationStateCreateInfo tesselationState;
-		VkPipelineViewportStateCreateInfo viewportState;
-		VkPipelineRasterizationStateCreateInfo rasterizationState;
-		VkPipelineMultisampleStateCreateInfo multisampleState;
-		VkPipelineDepthStencilStateCreateInfo depthStencilState;
-		VkPipelineColorBlendStateCreateInfo colorBlendState;
-		VkPipelineDynamicStateCreateInfo dynamicState;
 	};
 
 	class GraphicsPipeline
@@ -193,6 +177,10 @@ namespace Vulkan
 	public:
 		~FrameBuffer() = default;
 		friend class Device;
+
+		inline uint32_t NumAttachments() {
+			return static_cast<uint32_t>(m_images.size());
+		}
 	private:
 		FrameBuffer();
 
@@ -287,6 +275,13 @@ namespace Vulkan
 		friend class Instance;
 
 		/**
+		Waits for all queued operations to complete
+
+		\todo Handle a lost device
+		*/
+		void Join();
+
+		/**
 		Creates a pipeline layout - reusable across multiple pipelines
 		
 		\param[in] bindings 
@@ -297,11 +292,10 @@ namespace Vulkan
 		/**
 		Creates a shader module from SPIR-V bytecode
 		
-		\param[in] blobSize The size of the bytecode blob, in bytes
 		\param[in] bytecode The bytecode to use
 		\return If successful, a pointer to the resulting shader module. If failed, `nullptr`.
 		*/
-		std::shared_ptr<Shader> CreateShaderFromSPIRV(uint32_t blobSize, uint32_t *bytecode);
+		std::shared_ptr<Shader> CreateShaderFromSPIRV(const std::vector<uint32_t> &bytecode);
 		/**
 		Creates a shader module from GLSL source code
 		
@@ -320,16 +314,14 @@ namespace Vulkan
 		\param[in] frameBuffer The frame buffer this pipeline will alter
 		\param[in] layout What information this pipeline expects to receive when used
 		\param[in] shaders A list of shaders to bind to different stages of the pipeline
-<<<<<<< HEAD
-		\param[in] enableTesselation Enables tesselation. Note that if this is enabled, `state::tesselationState` must be filled out
+		\param[in] subpassIndex Which subpass this pipeline will modify. Defaults to 0.
+		\param[in] patchCtrlPoints Tesselation patch control points. Defaults to 0 (not using tesselation)
 		\return If successful, a pointer to the resulting graphics pipeline. If failed, `nullptr`.
 
+		\todo Validate subpassIndex from frameBuffer
 		\todo Parameterize module entry point
-=======
-		\return If successful, a pointer to the resulting graphics pipeline. If failed, `nullptr`.
->>>>>>> 433ed478d12f6824d8a7d2954fc70e6d342e675f
 		*/
-		std::shared_ptr<GraphicsPipeline> CreateGraphicsPipeline(const GraphicsPipelineState &state, const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::map<VkShaderStageFlagBits, Shader> &shaders, bool enableTesselation = false);
+		std::shared_ptr<GraphicsPipeline> CreateGraphicsPipeline(const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::vector<Shader> &shaders, uint32_t subpassIndex = 0, uint32_t patchCtrlPoints = 0);
 
 		/**
 		Creates a swap chain
@@ -367,7 +359,7 @@ namespace Vulkan
 
 		\return If successful, `true`. If failed, `false`.
 		*/
-		bool ExecuteCommands(const std::vector<CommandBuffer> &commands);
+		bool ExecuteCommands(const std::vector<std::shared_ptr<CommandBuffer>> &commands);
 
 
 		/** Swaps out backbuffers */
@@ -432,10 +424,10 @@ namespace Vulkan
 		/**
 		Fetches details about a given GPU
 
-		\param[in] index 
-		\return 
+		\param[in] gpuIndex Which GPU to query
+		\return If successful, details about the requested GPU. If failed, `nullptr`.
 		*/
-		const GpuProperties *GetGpuProperties(uint32_t index);
+		const GpuProperties *GetGpuProperties(uint32_t gpuIndex);
 		
 		/**
 		Creates a Vulkan device on the specified GPU
