@@ -1,13 +1,14 @@
 /**
 \file   backend.h
 \author Andrew Baxter
-\date   March 11, 2016
+\date   March 12, 2016
 
 The virtual interface with the Vulkan API
 
-
-\todo Implement missing functions
-\todo Look into debug/validation layers
+\todo Check if all requested extensions are supported
+\todo Device::CreateBuffer(...)
+\todo Graphics pipeline vertex input layout
+\todo Toggle debug/validation layers
 \todo Boot up Vulkan with a monitor target
 \todo Can FrameBuffer image memory be contiguous?
 
@@ -30,6 +31,9 @@ namespace Vulkan
 
 	extern constexpr uint32_t apiVersion();
 
+	constexpr uint32_t numQueues = 1; //Consolidated render + present queue
+	constexpr uint32_t graphicsIndex = 0; //Index of graphics (render + present) queue
+
 
 	template<uint32_t count>
 	struct ImageSet
@@ -42,7 +46,9 @@ namespace Vulkan
 		static VkImage LoadFromData(VkDevice device, const char *bytes, VkFormat format);
 
 	private:
-		ImageSet();
+		ImageSet() {
+			m_resolution = { 0, 0, 0 };
+		}
 
 		void Release(VkDevice device) //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 		{
@@ -87,6 +93,8 @@ namespace Vulkan
 	public:
 		~SwapChain() = default;
 		friend class Device;
+
+		uint32_t GetBufferIndex();
 	private:
 		SwapChain();
 
@@ -98,7 +106,8 @@ namespace Vulkan
 		std::vector<VkImage> m_backBuffers;
 		std::vector<VkImageView> m_backBufferViews;
 
-		uint32_t m_bufferIndex; //Which buffer to write to this frame
+		std::function<void(uint32_t *bufferIndex)> pfnAcquireNextImage;
+		uint32_t m_currentImage;
 	};
 
 	class Shader
@@ -106,17 +115,19 @@ namespace Vulkan
 	public:
 		~Shader() = default;
 		friend class Device;
-
-		~ErrorForReminder_As(VkShaderStageFlagBits stage, const std::string &entryPoint);
-
 	private:
 		Shader();
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
-		std::string m_entryPoint;
-		VkShaderStageFlagBits m_stage;
 		VkShaderModule m_module;
+	};
+
+	struct ShaderStage
+	{
+		std::shared_ptr<Shader> shader;
+		VkShaderStageFlagBits stage;
+		std::string entryPoint;
 	};
 	
 	struct Descriptor
@@ -150,6 +161,7 @@ namespace Vulkan
 	public:
 		~GraphicsPipeline() = default;
 		friend class Device;
+		friend class CommandBuffer;
 
 	private:
 		GraphicsPipeline();
@@ -164,6 +176,7 @@ namespace Vulkan
 	public:
 		~ComputePipeline() = default;
 		friend class Device;
+		friend class CommandBuffer;
 
 	private:
 		ComputePipeline();
@@ -177,6 +190,7 @@ namespace Vulkan
 	public:
 		~FrameBuffer() = default;
 		friend class Device;
+		friend class CommandBuffer;
 
 		inline uint32_t NumAttachments() {
 			return static_cast<uint32_t>(m_images.size());
@@ -195,7 +209,7 @@ namespace Vulkan
 		VkFramebuffer m_frameBuffer;
 		VkRenderPass m_renderPass;
 
-		glm::uvec2 m_resolution;
+		VkRect2D m_renderArea;
 	};
 
 	class CommandBuffer
@@ -204,13 +218,25 @@ namespace Vulkan
 		~CommandBuffer() = default;
 		friend class Device;
 
-		bool Begin(bool disposable);
+		bool Begin(bool reusable);
 
-		void BeginRendering(FrameBuffer target);
+		void BeginRendering(const std::shared_ptr<FrameBuffer> &target, const std::vector<VkClearValue> &clearValues, bool usingBundles = false);
 
 		void BindGraphicsPipeline(const std::shared_ptr<GraphicsPipeline> &pipeline);
 
 		void BindComputePipeline(const std::shared_ptr<ComputePipeline> &pipeline);
+
+		void BindVertexBuffers(...);
+
+		void BindIndexBuffer(...);
+
+		void DrawIndexed(uint32_t count);
+
+		void SetLineWidth(float width);
+
+		void SetViewport(const VkViewport &viewport);
+
+		void SetScissor(const VkRect2D &scissor);
 
 		void EndRendering();
 
@@ -229,15 +255,8 @@ namespace Vulkan
 		\param[in] aspectMask The aspect mask
 		\param[in] oldLayout The image's prior layout
 		\param[in] newLayout What layout to change the image to
-		\param[in] oldQueueFamilyIndex Where to the image was previously viewable from
-		\param[in] newQueueFamilyIndex Where to the image will be viewable from
 		*/
-		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t oldQueueFamilyIndex, uint32_t newQueueFamilyIndex);
-
-		//Just a crutch until I finish all the other functions
-		inline VkCommandBuffer Get() {
-			return m_commandBuffer;
-		}
+		void SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout);
 
 	private:
 		CommandBuffer();
@@ -264,7 +283,7 @@ namespace Vulkan
 		VkSurfaceCapabilitiesKHR caps;
 		VkSurfaceKHR surface;
 		VkFormat colorFormat;
-		uint32_t presentQueueIndex, renderQueueIndex;
+		uint32_t queueIndex;
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
@@ -313,15 +332,13 @@ namespace Vulkan
 		\param[in] state The state of the pipeline at each stage
 		\param[in] frameBuffer The frame buffer this pipeline will alter
 		\param[in] layout What information this pipeline expects to receive when used
-		\param[in] shaders A list of shaders to bind to different stages of the pipeline
-		\param[in] subpassIndex Which subpass this pipeline will modify. Defaults to 0.
+		\param[in] stages A list of shaders to bind to different stages of the pipeline
 		\param[in] patchCtrlPoints Tesselation patch control points. Defaults to 0 (not using tesselation)
 		\return If successful, a pointer to the resulting graphics pipeline. If failed, `nullptr`.
 
-		\todo Validate subpassIndex from frameBuffer
-		\todo Parameterize module entry point
+		\todo Parameterize render subpass index
 		*/
-		std::shared_ptr<GraphicsPipeline> CreateGraphicsPipeline(const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::vector<Shader> &shaders, uint32_t subpassIndex = 0, uint32_t patchCtrlPoints = 0);
+		std::shared_ptr<GraphicsPipeline> CreateGraphicsPipeline(const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::vector<ShaderStage> &stages, uint32_t patchCtrlPoints = 0);
 
 		/**
 		Creates a swap chain
@@ -336,13 +353,13 @@ namespace Vulkan
 		/**
 		Creates a command buffer
 
+		\param[in] poolIndex Which pool to allocate from
 		\param[in] bundle Is this command buffer a secondary command buffer? Defaults to false.
-		\param[in] poolIndex Which pool to allocate from. Defaults to 0.
 		\return If successful, a pointer to the resulting command buffer. If failed, `nullptr`.
 
 		\todo Queue index parameter
 		*/
-		std::shared_ptr<CommandBuffer> CreateCommandBuffer(bool bundle = false, uint32_t poolIndex = 0);
+		std::shared_ptr<CommandBuffer> CreateCommandBuffer(uint32_t poolIndex, bool bundle = false);
 
 		/**
 		Creates a frame buffer
@@ -357,18 +374,37 @@ namespace Vulkan
 		/**
 		Executes pre-recorded commands stored in a command bundle
 
-		\return If successful, `true`. If failed, `false`.
+		\param[in] commands A list of command buffers to execute
+		\return If the command buffers were valid, `true`. If execution failed, `false`.
 		*/
 		bool ExecuteCommands(const std::vector<std::shared_ptr<CommandBuffer>> &commands);
 
+		/**
+		Prepares a backbuffer for presenting
 
-		/** Swaps out backbuffers */
-		void Present();
+		\param[in] swapChain The swap chain to prepare
+		\param[in] bufferIndex Which buffer in the swap chain to prepare
+		\return If successful, `true`. If failed, `false`.
+		*/
+		bool PrePresent(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex);
+		/**
+		Presents the most recent backbuffer
+		
+		\param[in] swapChain The swap chain to present
+		\param[in] bufferIndex Which buffer in the swap chain to present
+		\return If successful, `true`. If failed, `false`.
 
-		static constexpr uint32_t renderQueue = 0; //Queue index for render operations
-		static constexpr uint32_t presentQueue = 1; //Queue index for present operations
-		static constexpr uint32_t computeQueue = 2; //Queue index for compute operations
-		//TODO: Are queues thread-friendly? Probably not.
+		\todo Enable/disable vsync?
+		*/
+		bool Present(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex);
+		/**
+		Prepares a backbuffer for rendering
+
+		\param[in] swapChain The swap chain to prepare
+		\param[in] bufferIndex Which buffer in the swap chain to prepare
+		\return If successful, `true`. If failed, `false`.
+		*/
+		bool PostPresent(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex);
 
 	private:
 		Device();
@@ -379,8 +415,11 @@ namespace Vulkan
 		GpuProperties m_gpuProps;
 
 		VkDevice m_device;
-		std::vector<VkQueue> m_queues;
-		std::array<VkCommandPool, 2> m_commandPools; //Separate pools for render and present queues
+		std::array<VkQueue, numQueues> m_queues;
+		std::array<VkCommandPool, numQueues> m_commandPools;
+		VkSemaphore m_presentComplete, m_renderComplete;
+		VkCommandBuffer m_cmdPrePresent, m_cmdPostPresent;
+		VkSubmitInfo m_submitInfo;
 
 		//VK_KHR_swapchain function pointers
 		PFN_vkCreateSwapchainKHR pfnCreateSwapchainKHR;

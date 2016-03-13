@@ -1,12 +1,27 @@
+/**
+\file   sdl_demo.cpp
+\author Andrew Baxter
+\date   March 12, 2016
+
+Boots up a window and clears it a solid color each frame
+\todo Rework smart pointer management. At the moment, I can't rely on them deconstructing in the required order without nasty brackets.
+
+*/
+
 #include <SDL2/include/SDL.h>
 #include <SDL2/include/SDL_syswm.h> //platform info
 #include <iostream>
 
 #include "../include/basilisk.h"
 
+
+#pragma comment(lib, "imm32.lib")
+#pragma comment(lib, "winmm.lib")
+#pragma comment(lib, "version.lib")
 #pragma comment(lib, "SDL2.lib")
 #pragma comment(lib, "SDL2main.lib")
 #pragma comment(lib, "Basilisk.lib")
+
 
 HWND hWnd;
 HINSTANCE hInstance;
@@ -18,11 +33,17 @@ int Dump()
 {
 	OutputDebugString("Errors:\n");
 	while (Basilisk::errors.size() > 0)
+	{
 		OutputDebugString((Basilisk::errors.front() + "\n").c_str());
+		Basilisk::errors.pop();
+	}
 
 	OutputDebugString("Warnings:\n");
 	while (Basilisk::warnings.size() > 0)
+	{
 		OutputDebugString((Basilisk::warnings.front() + "\n").c_str());
+		Basilisk::warnings.pop();
+	}
 
 	return 1;
 }
@@ -42,12 +63,11 @@ int main(int argc, char *argv[])
 	}
 
 	//get window handle to initialize with
-	SDL_Window *window = SDL_CreateWindow(appName, monitor.w/2-w/2, monitor.h/2-h/2, w, h, 0); //Center in screen
+	SDL_Window *window = SDL_CreateWindow(appName, monitor.w/2-w/2, monitor.h/2-h/2, w, h, 0); //Center in the monitor
 	SDL_SysWMinfo wmInfo;
 	SDL_VERSION(&wmInfo.version);
 	SDL_GetWindowWMInfo(window, &wmInfo);
 	hWnd = wmInfo.info.win.window;
-
 
 
 	auto instance = Vulkan::Initialize(appName, appVersion);
@@ -58,37 +78,59 @@ int main(int argc, char *argv[])
 
 	auto device = instance->CreateDevice(0);
 	if (!device) return Dump();
-	auto cmdSetup = device->CreateCommandBuffer();
-	cmdSetup->Begin(true);
-	if (!cmdSetup) return Dump();
 
-	auto swapChain = device->CreateSwapChain(cmdSetup, { w, h }, 2); //Double-buffered 720x480 window
-	if (!swapChain) return Dump();
-	auto frameBuffer = device->CreateFrameBuffer({ w, h }, { VK_FORMAT_R8G8B8_UNORM }, false); //24-bit 720x480 render targets (with no depth buffer)
-	if (!frameBuffer) return Dump();
+	{ //Make sure device outlives the objects it creates
+		auto cmdSetup = device->CreateCommandBuffer(Vulkan::graphicsIndex);
+		if (!cmdSetup) return Dump();
+		cmdSetup->Begin(false);
 
-	auto pipelineLayout = device->CreatePipelineLayout({}); //Empty pipeline layout
-	if (!pipelineLayout) return Dump();
-	auto pipeline = device->CreateGraphicsPipeline(frameBuffer, pipelineLayout, {}); //Bare-bones graphics pipeline
-	if (!pipeline) return Dump();
+		auto swapChain = device->CreateSwapChain(cmdSetup, { w, h }, 2); //Double-buffered 720x480 window
+		if (!swapChain) return Dump();
+		auto frameBuffer = device->CreateFrameBuffer({ w, h }, { VK_FORMAT_R8G8B8_UNORM }, false); //A single 24-bit, 720x480 render target (no depth buffer)
+		if (!frameBuffer) return Dump();
 
-	cmdSetup->End();
-	device->ExecuteCommands({ cmdSetup });
-	device->Join();
+		//auto pipelineLayout = device->CreatePipelineLayout({}); //Empty pipeline layout
+		//if (!pipelineLayout) return Dump();
+		//auto pipeline = device->CreateGraphicsPipeline(frameBuffer, pipelineLayout, {}); //Bare-bones graphics pipeline
+		//if (!pipeline) return Dump();
 
-	SDL_Event windowEvent;
-	unsigned long long fence = 0;
-	SDL_PollEvent(&windowEvent);
-
-	while (windowEvent.type != SDL_QUIT)
-	{
+		cmdSetup->End();
+		device->ExecuteCommands({ cmdSetup });
 		device->Join();
 
-		//Render here
+		auto cmdDraw = device->CreateCommandBuffer(Vulkan::graphicsIndex);
+		if (!cmdDraw) return Dump();
 
-		device->Join();
+		//Fill the draw command buffer
+		if (!cmdDraw->Begin(true)) return Dump();
+		std::vector<VkClearValue> clearValues(1);
+		clearValues[0].color = { 0.0f, 0.0f, 0.2f, 0.0f };
+		cmdDraw->BeginRendering(frameBuffer, clearValues, false);
+		//cmdDraw->BindGraphicsPipeline(pipeline);
+		cmdDraw->EndRendering();
+		if (!cmdDraw->End()) return Dump();
+
+		SDL_Event windowEvent;
+		unsigned long long fence = 0;
 		SDL_PollEvent(&windowEvent);
+
+		while (windowEvent.type != SDL_QUIT)
+		{
+			device->Join();
+
+			uint32_t currentBuffer = swapChain->GetBufferIndex();
+
+			device->PostPresent(swapChain, currentBuffer);
+			device->ExecuteCommands({ cmdDraw });
+			device->PrePresent(swapChain, currentBuffer);
+
+			device->Present(swapChain, currentBuffer);
+
+			device->Join();
+			SDL_PollEvent(&windowEvent);
+		}
 	}
+	
 
 	return 0;
 }

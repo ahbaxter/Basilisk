@@ -51,9 +51,6 @@
     <ClInclude Include="include\core\task_graph.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\command_buffer.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
     <ClInclude Include="include\rendering\backend.h">
       <Filter>Rendering</Filter>
     </ClInclude>
@@ -73,9 +70,6 @@
     </ClCompile>
     <ClCompile Include="source\core\task_graph.cpp">
       <Filter>Core</Filter>
-    </ClCompile>
-    <ClCompile Include="source\rendering\command_buffer.cpp">
-      <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="source\rendering\backend.cpp">
       <Filter>Rendering</Filter>

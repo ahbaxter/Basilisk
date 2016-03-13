@@ -3,19 +3,19 @@ IMMEDIATE:
 
 Input Collection
 Static Mesh Display
-Basic Shaders (Textures, then lighting)
 Sprites
+Instancing
 
 
 UNAVOIDABLE:
 
 Pre-Compiled Headers
+Basic Shaders (Textures, then lighting)
 Audio?
 Set up Bullet
 Set up Assimp
-Move, copy, clone, etc optimizations
 Automate offline shader compilation
-RakNet? Maybe use the experimental STL networking library now.
+RakNet? Maybe use the experimental STL networking library.
 
 
 COMPLICATED:

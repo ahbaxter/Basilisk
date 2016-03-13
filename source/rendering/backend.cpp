@@ -1,7 +1,7 @@
 /**
 \file   backend.cpp
 \author Andrew Baxter
-\date   March 11, 2016
+\date   March 12, 2016
 
 Defines the behavior of the Vulkan rendering backend
 
@@ -29,7 +29,7 @@ constexpr uint32_t Vulkan::extensionCount() {
 const char *extNames[Vulkan::extensionCount()] = {
 	VK_KHR_SURFACE_EXTENSION_NAME,
 	VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 	VK_KHR_DISPLAY_EXTENSION_NAME,
 	VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME
 };
@@ -43,6 +43,14 @@ constexpr uint32_t Vulkan::apiVersion() {
 }
 #pragma endregion
 
+SwapChain::SwapChain() : m_swapChain(VK_NULL_HANDLE), pfnAcquireNextImage(nullptr) { }
+
+uint32_t SwapChain::GetBufferIndex()
+{
+	pfnAcquireNextImage(&m_currentImage);
+	return m_currentImage;
+}
+
 void SwapChain::Release(VkDevice device, PFN_vkDestroySwapchainKHR func)
 {
 	//The images and image views are managed under the hood by Vulkan
@@ -53,6 +61,8 @@ void SwapChain::Release(VkDevice device, PFN_vkDestroySwapchainKHR func)
 	}
 }
 
+Shader::Shader() : m_module(VK_NULL_HANDLE) { }
+
 void Shader::Release(VkDevice device)
 {
 	if (m_module)
@@ -61,6 +71,8 @@ void Shader::Release(VkDevice device)
 		m_module = VK_NULL_HANDLE;
 	}
 }
+
+PipelineLayout::PipelineLayout() : m_layout(VK_NULL_HANDLE), m_setLayout(VK_NULL_HANDLE) { }
 
 void PipelineLayout::Release(VkDevice device)
 {
@@ -76,6 +88,8 @@ void PipelineLayout::Release(VkDevice device)
 	}
 }
 
+GraphicsPipeline::GraphicsPipeline() : m_pipeline(VK_NULL_HANDLE) { }
+
 void GraphicsPipeline::Release(VkDevice device)
 {
 	if (m_pipeline)
@@ -86,6 +100,11 @@ void GraphicsPipeline::Release(VkDevice device)
 }
 
 #pragma region FrameBuffer
+FrameBuffer::FrameBuffer() : m_frameBuffer(VK_NULL_HANDLE), m_renderPass(VK_NULL_HANDLE)
+{
+	m_renderArea = { 0, 0, 0, 0 };
+}
+
 void FrameBuffer::Release(VkDevice device)
 {
 	if (m_frameBuffer)
@@ -129,6 +148,8 @@ void FrameBuffer::ResizeVectors(uint32_t size)
 #pragma endregion
 
 #pragma region CommandBuffer
+CommandBuffer::CommandBuffer() : m_commandBuffer(VK_NULL_HANDLE) { }
+
 void CommandBuffer::Release(VkDevice device, VkCommandPool pool)
 {
 	if (m_commandBuffer)
@@ -138,13 +159,10 @@ void CommandBuffer::Release(VkDevice device, VkCommandPool pool)
 	}
 }
 
-CommandBuffer::CommandBuffer() : m_commandBuffer(nullptr) {
-}
 
-
-bool CommandBuffer::Begin(bool disposable)
+bool CommandBuffer::Begin(bool reusable)
 {
-	VkCommandBufferUsageFlags flags = disposable ? VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT : 0;
+	VkCommandBufferUsageFlags flags = reusable ? 0 : VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	VkCommandBufferBeginInfo begin_info = {
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -162,6 +180,61 @@ bool CommandBuffer::Begin(bool disposable)
 	return true;
 }
 
+void CommandBuffer::BeginRendering(const std::shared_ptr<FrameBuffer> &target, const std::vector<VkClearValue> &clearValues, bool usingBundles)
+{
+	if (clearValues.size() != target->m_images.size())
+		Basilisk::errors.push("Vulkan::CommandBuffer::BeginRendering() was not given the correct number of clear values");
+
+	VkRenderPassBeginInfo rp_info = {
+		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+		nullptr,
+		target->m_renderPass,
+		target->m_frameBuffer,
+		target->m_renderArea,
+		static_cast<uint32_t>(clearValues.size()),
+		clearValues.data()
+	};
+
+	vkCmdBeginRenderPass(m_commandBuffer, &rp_info, usingBundles ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS : VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void CommandBuffer::BindGraphicsPipeline(const std::shared_ptr<GraphicsPipeline> &pipeline)
+{
+	if (pipeline)
+		vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->m_pipeline);
+	else
+		Basilisk::errors.push("Vulkan::CommandBuffer::BindGraphicsPipeline()::pipeline must not be a null pointer");
+}
+
+void CommandBuffer::SetLineWidth(float width)
+{
+	vkCmdSetLineWidth(m_commandBuffer, width);
+}
+
+void CommandBuffer::SetViewport(const VkViewport &viewport)
+{
+	vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+}
+
+void CommandBuffer::SetScissor(const VkRect2D &scissor)
+{
+	vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
+}
+
+
+
+void CommandBuffer::DrawIndexed(uint32_t count)
+{
+	vkCmdDrawIndexed(m_commandBuffer, count, 1, 0, 0, 1);
+}
+
+
+
+void CommandBuffer::EndRendering()
+{
+	vkCmdEndRenderPass(m_commandBuffer);
+}
+
 bool CommandBuffer::End()
 {
 	if (Failed(vkEndCommandBuffer(m_commandBuffer)))
@@ -173,7 +246,7 @@ bool CommandBuffer::End()
 	return true;
 }
 
-void CommandBuffer::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t oldQueueFamilyIndex, uint32_t newQueueFamilyIndex)
+void CommandBuffer::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
 	VkImageSubresourceRange range = {
 		aspectMask,  //Aspect mask
@@ -186,15 +259,15 @@ void CommandBuffer::SetImageLayout(VkImage image, VkImageAspectFlags aspectMask,
 	//TODO: Depth buffer attachments
 	VkImageMemoryBarrier image_memory_barrier = {
 		VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-		nullptr,                              //Reserved
-		0,                                    //Source access mask
+		nullptr,    //Reserved
+		0,          //Source access mask
 		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,  //Destination access mask
-		oldLayout,                            //Old layout
-		newLayout,                            //New layout
-		oldQueueFamilyIndex,                  //Source queue family index
-		newQueueFamilyIndex,                  //Destination queue family index
-		image,                                //Image
-		range                                 //Subresource range
+		oldLayout,  //Old layout
+		newLayout,  //New layout
+		0,          //Source queue family index
+		0,          //Destination queue family index
+		image,      //Image
+		range       //Subresource range
 	};
 
 	VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -213,10 +286,38 @@ void CommandBuffer::WriteBundle(const std::shared_ptr<CommandBuffer> &bundle)
 
 #pragma region Device
 void Device::Release() {
-	for (uint32_t i = 0; i < m_commandPools.size(); ++i)
+	//Release semaphores
+	if (m_presentComplete)
 	{
-		vkDestroyCommandPool(m_device, m_commandPools[i], nullptr);
+		vkDestroySemaphore(m_device, m_presentComplete, nullptr);
+		m_presentComplete = VK_NULL_HANDLE;
 	}
+	if (m_renderComplete)
+	{
+		vkDestroySemaphore(m_device, m_renderComplete, nullptr);
+		m_renderComplete = VK_NULL_HANDLE;
+	}
+	//Release command buffers
+	if (m_cmdPrePresent)
+	{
+		vkFreeCommandBuffers(m_device, m_commandPools[graphicsIndex], 1, &m_cmdPrePresent);
+		m_cmdPrePresent = VK_NULL_HANDLE;
+	}
+	if (m_cmdPostPresent)
+	{
+		vkFreeCommandBuffers(m_device, m_commandPools[graphicsIndex], 1, &m_cmdPostPresent);
+		m_cmdPostPresent = VK_NULL_HANDLE;
+	}
+	//Release command pools
+	for (auto &iter : m_commandPools)
+	{
+		if (iter)
+		{
+			vkDestroyCommandPool(m_device, iter, nullptr);
+			iter = VK_NULL_HANDLE;
+		}
+	}
+	//Queues self-destruct
 	if (m_device)
 	{
 		vkDestroyDevice(m_device, nullptr);
@@ -247,7 +348,7 @@ void Device::Join()
 	vkDeviceWaitIdle(m_device);
 }
 
-std::shared_ptr<CommandBuffer> Device::CreateCommandBuffer(bool bundle, uint32_t poolIndex)
+std::shared_ptr<CommandBuffer> Device::CreateCommandBuffer(uint32_t poolIndex, bool bundle)
 {
 	std::shared_ptr<CommandBuffer> out(new CommandBuffer,
 		[=](CommandBuffer *ptr)
@@ -270,12 +371,15 @@ std::shared_ptr<CommandBuffer> Device::CreateCommandBuffer(bool bundle, uint32_t
 	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Device::CreateCommandBuffer() could not create the command buffer");
+		return nullptr;
 	}
+
+
+	return out;
 }
 
 std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<CommandBuffer> &setup, glm::uvec2 resolution, uint32_t numBuffers)
 {
-#ifndef BASILISK_FINAL_BUILD
 	if (nullptr == setup)
 	{
 		Basilisk::errors.push("Vulkan::Device::CreateSwapChain()::setupBuffer must not be a null pointer");
@@ -286,7 +390,6 @@ std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<Command
 		Basilisk::errors.push("Vulkan::Device::CreateSwapChain() cannot be called before hooking into a window or monitor");
 		return nullptr;
 	}
-#endif
 
 	//Meets all prerequisites
 	
@@ -423,10 +526,10 @@ std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<Command
 		setup->SetImageLayout(out->m_backBuffers[i],
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_LAYOUT_UNDEFINED,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			renderQueue, renderQueue);
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	}
 
+	out->pfnAcquireNextImage = std::bind(pfnAcquireNextImageKHR, m_device, out->m_swapChain, UINT64_MAX, m_presentComplete, nullptr, std::placeholders::_1);
 
 	return out;
 }
@@ -452,7 +555,7 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 		}
 	);
 
-	out->m_resolution = resolution;
+	out->m_renderArea = { 0, 0, resolution.x, resolution.y };
 
 	uint32_t numAttachments = static_cast<uint32_t>(colorFormats.size()) + (enableDepth ? 1 : 0);
 	out->ResizeVectors(numAttachments);
@@ -711,7 +814,7 @@ std::shared_ptr<Shader> Device::CreateShaderFromGLSL(const std::string &source, 
 	return out;
 }
 
-std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::vector<Shader> &shaders, uint32_t subpassIndex, uint32_t patchCtrlPoints)
+std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::vector<ShaderStage> &shaders, uint32_t patchCtrlPoints)
 {
 	VkGraphicsPipelineCreateInfo pipeline_info;
 
@@ -722,15 +825,15 @@ std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shar
 		stage_info[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		stage_info[i].pNext = nullptr;
 		stage_info[i].flags = 0;
-		stage_info[i].stage = shaders[i].m_stage;
-		stage_info[i].module = shaders[i].m_module;
-		stage_info[i].pName = shaders[i].m_entryPoint.c_str();
+		stage_info[i].stage = shaders[i].stage;
+		stage_info[i].module = shaders[i].shader->m_module;
+		stage_info[i].pName = shaders[i].entryPoint.c_str();
 		stage_info[i].pSpecializationInfo = nullptr;
 	}
 	pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipeline_info.pNext = nullptr;
 	pipeline_info.flags = 0;
-	pipeline_info.stageCount = shaders.size();
+	pipeline_info.stageCount = static_cast<uint32_t>(shaders.size());
 	pipeline_info.pStages = stage_info.data();
 
 
@@ -879,14 +982,14 @@ std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shar
 		VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 		nullptr,                  //Reserved
 		0,                        //No flags: reserved
-		dynamic_enables.size(),  //Dynamic state count
+		static_cast<uint32_t>(dynamic_enables.size()),  //Dynamic state count
 		dynamic_enables.data()   //Dynamic state enables
 	};
 	pipeline_info.pDynamicState = &dynamic;
 
 	pipeline_info.layout = layout->m_layout;
 	pipeline_info.renderPass = frameBuffer->m_renderPass;
-	pipeline_info.subpass = subpassIndex;
+	pipeline_info.subpass = 0;
 	pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 	pipeline_info.basePipelineIndex = -1;
 
@@ -909,6 +1012,164 @@ std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shar
 	return out;
 }
 
+bool Device::ExecuteCommands(const std::vector<std::shared_ptr<CommandBuffer>> &commands)
+{
+	if (commands.size() > 0)
+	{
+		std::vector<VkCommandBuffer> vk_commands(commands.size());
+		for (uint32_t i = 0; i < commands.size(); ++i)
+			vk_commands[i] = commands[i]->m_commandBuffer;
+
+		m_submitInfo.commandBufferCount = static_cast<uint32_t>(vk_commands.size());
+		m_submitInfo.pCommandBuffers = vk_commands.data();
+
+
+		if (Failed(vkQueueSubmit(m_queues[graphicsIndex], 1, &m_submitInfo, VK_NULL_HANDLE)))
+		{
+			Basilisk::errors.push("Vulkan::Device::ExecuteCommands() could not submit the commands to the graphics queue");
+			return false;
+		}
+		else return true;
+	}
+	else
+	{
+		Basilisk::errors.push("Vulkan::Device::ExecuteCommands()::commands must not be empty");
+		return false;
+	}
+}
+
+bool Device::PrePresent(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex)
+{
+	VkCommandBufferBeginInfo begin_info = {
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		nullptr, 0, nullptr
+	};
+
+	VkImageMemoryBarrier barrier = {
+		VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		nullptr,  //Reserved
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,      //Source access mask
+		0,        //Destination access mask
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,  //Old layout
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,           //New layout
+		(~0ui32), (~0ui32),  //Source, destination queue family index
+		swapChain->m_backBuffers[bufferIndex],     //Image
+		{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }  //Subresource range
+	};
+
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.pNext = nullptr;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &m_cmdPrePresent;
+
+	VkResult res = vkBeginCommandBuffer(m_cmdPrePresent, &begin_info);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::PrePresent() could not begin the command buffer");
+		return false;
+	}
+
+	vkCmdPipelineBarrier(m_cmdPrePresent,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		0,           //No flags
+		0, nullptr,  //No memory barriers
+		0, nullptr,  //No buffer barriers
+		1, &barrier  //One image barrier
+		);
+
+	res = vkEndCommandBuffer(m_cmdPrePresent);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::PrePresent() could not end the command buffer");
+		return false;
+	}
+
+	res = vkQueueSubmit(m_queues[graphicsIndex], 1, &submit_info, VK_NULL_HANDLE);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::PrePresent() could not submit the command buffer");
+		return false;
+	}
+
+	return true;
+}
+
+bool Device::Present(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex)
+{
+	VkPresentInfoKHR present_info = {};
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.pNext = nullptr;
+	present_info.swapchainCount = 1;
+	present_info.pSwapchains = &swapChain->m_swapChain;
+	present_info.pImageIndices = &bufferIndex;
+
+	if (Failed(pfnQueuePresentKHR(m_queues[graphicsIndex], &present_info)))
+	{
+		Basilisk::errors.push("Failed to present swap chain");
+		return false;
+	}
+	else return true;
+}
+
+bool Device::PostPresent(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex)
+{
+	VkCommandBufferBeginInfo begin_info = {
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+		nullptr, 0, nullptr
+	};
+
+	VkImageMemoryBarrier barrier = {
+		VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		nullptr,  //Reserved
+		0,        //Source access mask
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,      //Destination access mask
+		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,           //Old layout
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,  //New layout
+		(~0ui32), (~0ui32),  //Source, destination queue family index
+		swapChain->m_backBuffers[bufferIndex],     //Image
+		{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }  //Subresource range
+	};
+
+	VkSubmitInfo submit_info = {};
+	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submit_info.pNext = nullptr;
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &m_cmdPostPresent;
+
+	VkResult res = vkBeginCommandBuffer(m_cmdPostPresent, &begin_info);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::PostPresent() could not begin the command buffer");
+		return false;
+	}
+
+	vkCmdPipelineBarrier(m_cmdPostPresent,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		0,           //No flags
+		0, nullptr,  //No memory barriers
+		0, nullptr,  //No buffer barriers
+		1, &barrier  //One image barrier
+		);
+
+	res = vkEndCommandBuffer(m_cmdPostPresent);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::PostPresent() could not end the command buffer");
+		return false;
+	}
+
+	res = vkQueueSubmit(m_queues[graphicsIndex], 1, &submit_info, VK_NULL_HANDLE);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Device::PrePresent() could not submit the command buffer");
+		return false;
+	}
+
+	return true;
+}
 
 #pragma endregion
 
@@ -929,7 +1190,7 @@ void Instance::Release()
 	}
 }
 
-Instance::Instance() : m_instance(VK_NULL_HANDLE)
+Instance::Instance() : m_instance(VK_NULL_HANDLE), m_presentTarget(nullptr)
 {}
 
 
@@ -1105,23 +1366,15 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 	//
 
 	float queue_priorities[1] = { 1.0 };
-	VkDeviceQueueCreateInfo queue_info[2] =
+	VkDeviceQueueCreateInfo queue_info[1] =
 	{
 		{
 			VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 			nullptr,           //Reserved
 			0,                 //No flags
-			m_presentTarget->renderQueueIndex,  //This is the rendering queue
+			m_presentTarget->queueIndex,  //This is the rendering queue
 			1,                 //Queue count
 			queue_priorities   //Queue priorities
-		},
-		{
-			VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-			nullptr,            //Reserved
-			0,                  //No flags
-			m_presentTarget->presentQueueIndex,  //This is the presentation queue
-			1,                  //Queue count
-			queue_priorities    //Queue priorities
 		}
 	};
 
@@ -1129,7 +1382,7 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 		VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 		nullptr,           //Reserved
 		0,                 //Flags
-		2,                 //Queue count
+		1,                 //Queue count
 		queue_info,        //Queue properties
 		layerCount(),      //Layer count
 		layerNames(),      //Layer types
@@ -1144,6 +1397,7 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 		return nullptr;
 	}
 	//Store Vulkan extension function pointers
+
 	//VK_KHR_swapchain function pointers
 	out->pfnCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateSwapchainKHR"));
 	out->pfnDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(vkGetDeviceProcAddr(out->m_device, "vkDestroySwapchainKHR"));
@@ -1165,32 +1419,68 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 	////Create the device's command pool(s)
 	//
 
-	//Rendering queue
-	VkCommandPoolCreateInfo render_pool_info = Init<VkCommandPoolCreateInfo>::Create(m_presentTarget->renderQueueIndex);
+	//For graphics queue
+	VkCommandPoolCreateInfo render_pool_info = Init<VkCommandPoolCreateInfo>::Create(m_presentTarget->queueIndex);
 
-	res = vkCreateCommandPool(out->m_device, &render_pool_info, nullptr, &out->m_commandPools[Device::renderQueue]);
+	res = vkCreateCommandPool(out->m_device, &render_pool_info, nullptr, &out->m_commandPools[graphicsIndex]);
 	if (Failed(res))
 	{
-		Basilisk::errors.push("Vulkan::Instance::CreateDevice() failed to create the command pool");
+		Basilisk::errors.push("Vulkan::Instance::CreateDevice() failed to create the graphics command pool");
 		return nullptr;
 	}
 
-	//Presentation queue
-	VkCommandPoolCreateInfo present_pool_info = Init<VkCommandPoolCreateInfo>::Create(m_presentTarget->presentQueueIndex);
+	//Store the queues we created above in the device
+	vkGetDeviceQueue(out->m_device, m_presentTarget->queueIndex, 0, &out->m_queues[graphicsIndex]);
 
-	res = vkCreateCommandPool(out->m_device, &present_pool_info, nullptr, &out->m_commandPools[Device::presentQueue]);
+	//Create semaphores for each queue
+	VkSemaphoreCreateInfo semaphore_info = {
+		VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+		nullptr,  //Reserved
+		0         //No flags: reserved
+	};
+
+	res = vkCreateSemaphore(out->m_device, &semaphore_info, nullptr, &out->m_renderComplete);
 	if (Failed(res))
 	{
-		Basilisk::errors.push("Vulkan::Instance::CreateDevice() failed to create the command pool");
+		Basilisk::errors.push("Vulkan::Instance::CreateDevice() could not create the render semaphore");
+		return nullptr;
+	}
+	res = vkCreateSemaphore(out->m_device, &semaphore_info, nullptr, &out->m_presentComplete);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Instance::CreateDevice() could not create the presentation semaphore");
 		return nullptr;
 	}
 
-	//
-	////Store the queues we created above in the device
-	//
-
-	vkGetDeviceQueue(out->m_device, m_presentTarget->renderQueueIndex, 0, &out->m_queues[Device::renderQueue]);
-	vkGetDeviceQueue(out->m_device, m_presentTarget->presentQueueIndex, 0, &out->m_queues[Device::presentQueue]);
+	//Create pre-present and post-present command buffers
+	VkCommandBufferAllocateInfo cmd_info = {
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		nullptr,
+		out->m_commandPools[graphicsIndex],
+		VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		1
+	};
+	res = vkAllocateCommandBuffers(out->m_device, &cmd_info, &out->m_cmdPrePresent);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Instance::CreateDevice() could not create the pre-present command buffer");
+		return nullptr;
+	}
+	res = vkAllocateCommandBuffers(out->m_device, &cmd_info, &out->m_cmdPostPresent);
+	if (Failed(res))
+	{
+		Basilisk::errors.push("Vulkan::Instance::CreateDevice() could not create the post-present command buffer");
+		return nullptr;
+	}
+	//Store submit info for graphics commands
+	out->m_submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	out->m_submitInfo.pNext = nullptr;
+	out->m_submitInfo.waitSemaphoreCount = 1;
+	out->m_submitInfo.pWaitSemaphores = &out->m_presentComplete;
+	out->m_submitInfo.pWaitDstStageMask = nullptr;
+	//Command buffer count and command buffers will be updated each frame
+	out->m_submitInfo.signalSemaphoreCount = 1;
+	out->m_submitInfo.pSignalSemaphores = &out->m_renderComplete;
 
 
 	return out;
@@ -1234,7 +1524,7 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not connect to the provided window");
-		return nullptr;
+		return false;
 	}
 
 	//
@@ -1248,38 +1538,23 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 		if (Failed(res))
 		{ //Error getting the GPU's surface support
 			Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not query the GPU's surface support");
-			return nullptr;
+			return false;
 		}
 	}
 
-	m_presentTarget->presentQueueIndex = std::numeric_limits<uint32_t>::max();
+	m_presentTarget->queueIndex = std::numeric_limits<uint32_t>::max();
 	for (uint32_t i = 0; i < m_gpuProps[gpuIndex].queueDescs.size(); ++i)
 	{
 		if ((m_gpuProps[gpuIndex].queueDescs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supportsPresent[i])
 		{ //Found a queue that fits our criteria
-			m_presentTarget->presentQueueIndex = i;
+			m_presentTarget->queueIndex = i;
 			break;
 		}
 	}
-	if (std::numeric_limits<uint32_t>::max() == m_presentTarget->presentQueueIndex)
+	if (std::numeric_limits<uint32_t>::max() == m_presentTarget->queueIndex)
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not find a present-capable graphics queue");
-		return nullptr;
-	}
-
-	m_presentTarget->renderQueueIndex = std::numeric_limits<uint32_t>::max();
-	for (uint32_t i = 0; i < m_gpuProps[gpuIndex].queueDescs.size(); ++i)
-	{
-		if ((m_gpuProps[gpuIndex].queueDescs[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && i != m_presentTarget->presentQueueIndex)
-		{ //Found a queue that fits our criteria
-			m_presentTarget->renderQueueIndex = i;
-			break;
-		}
-	}
-	if (std::numeric_limits<uint32_t>::max() == m_presentTarget->renderQueueIndex)
-	{
-		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not find a second graphics queue");
-		return nullptr;
+		return false;
 	}
 
 	//
@@ -1291,7 +1566,7 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not count window surface formats");
-		return nullptr;
+		return false;
 	}
 
 	std::vector<VkSurfaceFormatKHR> surfFormats(formatCount);
@@ -1299,13 +1574,13 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not retrieve window surface formats");
-		return nullptr;
+		return false;
 	}
 
 	if (formatCount == 0)
 	{ //Surface isn't playing nice
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not find a preferred format for the window surface");
-		return nullptr;
+		return false;
 	}
 	else if (formatCount == 1 && surfFormats[0].format == VK_FORMAT_UNDEFINED)
 	{ //Surface has no preferred format
@@ -1324,7 +1599,7 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not retrieve the GPU's surface capabilities");
-		return nullptr;
+		return false;
 	}
 
 	uint32_t presentModeCount;
@@ -1332,12 +1607,12 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not count the GPU's present modes");
-		return nullptr;
+		return false;
 	}
 	if (presentModeCount == 0)
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not detect any present modes for the provided GPU");
-		return nullptr;
+		return false;
 	}
 
 	m_presentTarget->presentModes.resize(presentModeCount);
@@ -1346,8 +1621,10 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window() could not list the GPU's present modes");
-		return nullptr;
+		return false;
 	}
+
+	return true;
 }
 
 #pragma endregion
