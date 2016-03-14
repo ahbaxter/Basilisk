@@ -13,7 +13,7 @@ Boots up a window and clears it a solid color each frame
 #include <iostream>
 
 #include "../include/basilisk.h"
-
+#include <Windows.h>
 
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "winmm.lib")
@@ -50,8 +50,6 @@ int Dump()
 
 int main(int argc, char *argv[])
 {
-	hInstance = GetModuleHandle(NULL);
-
 	SDL_Init(SDL_INIT_VIDEO);
 
 	const int w = 720, h = 480;
@@ -68,6 +66,7 @@ int main(int argc, char *argv[])
 	SDL_VERSION(&wmInfo.version);
 	SDL_GetWindowWMInfo(window, &wmInfo);
 	hWnd = wmInfo.info.win.window;
+	hInstance = reinterpret_cast<HINSTANCE>(GetWindowLongPtr(hWnd, GWLP_HINSTANCE));
 
 
 	auto instance = Vulkan::Initialize(appName, appVersion);
@@ -86,7 +85,7 @@ int main(int argc, char *argv[])
 
 		auto swapChain = device->CreateSwapChain(cmdSetup, { w, h }, 2); //Double-buffered 720x480 window
 		if (!swapChain) return Dump();
-		auto frameBuffer = device->CreateFrameBuffer({ w, h }, { VK_FORMAT_R8G8B8_UNORM }, false); //A single 24-bit, 720x480 render target (no depth buffer)
+		auto frameBuffer = device->CreateFrameBuffer({ w, h }, { VK_FORMAT_R8G8B8A8_UNORM }, false); //A single 24-bit, 720x480 render target (no depth buffer)
 		if (!frameBuffer) return Dump();
 
 		//auto pipelineLayout = device->CreatePipelineLayout({}); //Empty pipeline layout
@@ -104,7 +103,7 @@ int main(int argc, char *argv[])
 		//Fill the draw command buffer
 		if (!cmdDraw->Begin(true)) return Dump();
 		std::vector<VkClearValue> clearValues(1);
-		clearValues[0].color = { 0.0f, 0.0f, 0.2f, 0.0f };
+		clearValues[0].color = { 0.0f, 0.0f, 1.0f, 0.0f };
 		cmdDraw->BeginRendering(frameBuffer, clearValues, false);
 		//cmdDraw->BindGraphicsPipeline(pipeline);
 		cmdDraw->EndRendering();
@@ -120,9 +119,9 @@ int main(int argc, char *argv[])
 
 			uint32_t currentBuffer = swapChain->GetBufferIndex();
 
-			device->PostPresent(swapChain, currentBuffer);
-			device->ExecuteCommands({ cmdDraw });
-			device->PrePresent(swapChain, currentBuffer);
+			if (!device->PostPresent(swapChain, currentBuffer)) return Dump();
+			if (!device->ExecuteCommands({ cmdDraw })) return Dump();
+			if (!device->PrePresent(swapChain, currentBuffer)) return Dump();
 
 			device->Present(swapChain, currentBuffer);
 
@@ -131,7 +130,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-
+	Dump();
 	return 0;
 }
 

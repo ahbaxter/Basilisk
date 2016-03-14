@@ -1,14 +1,13 @@
 /**
 \file   backend.h
 \author Andrew Baxter
-\date   March 12, 2016
+\date   March 13, 2016
 
 The virtual interface with the Vulkan API
 
 \todo Check if all requested extensions are supported
 \todo Device::CreateBuffer(...)
 \todo Graphics pipeline vertex input layout
-\todo Toggle debug/validation layers
 \todo Boot up Vulkan with a monitor target
 \todo Can FrameBuffer image memory be contiguous?
 
@@ -26,8 +25,10 @@ namespace Vulkan
 	extern constexpr uint32_t layerCount();
 	extern constexpr const char **layerNames();
 
-	extern constexpr uint32_t extensionCount();
-	extern constexpr const char **extensionNames();
+	extern constexpr uint32_t instExtensionCount();
+	extern constexpr const char **instExtensionNames();
+	extern constexpr uint32_t devExtensionCount();
+	extern constexpr const char **devExtensionNames();
 
 	extern constexpr uint32_t apiVersion();
 

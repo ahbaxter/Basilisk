@@ -1,7 +1,7 @@
 /**
 \file   backend.cpp
 \author Andrew Baxter
-\date   March 12, 2016
+\date   March 13, 2016
 
 Defines the behavior of the Vulkan rendering backend
 
@@ -15,27 +15,53 @@ using namespace Vulkan;
 
 #pragma region Configuration
 
+#ifdef _DEBUG
+constexpr uint32_t Vulkan::layerCount() {
+	return 6;
+}
+const char *lyrNames[Vulkan::layerCount()] = {
+	"VK_LAYER_LUNARG_threading",
+	"VK_LAYER_LUNARG_draw_state",
+	"VK_LAYER_LUNARG_image",
+	"VK_LAYER_LUNARG_mem_tracker",
+	"VK_LAYER_LUNARG_object_tracker",
+	"VK_LAYER_LUNARG_param_checker"
+};
+constexpr const char **Vulkan::layerNames() {
+	return lyrNames;
+}
+#else
 constexpr uint32_t Vulkan::layerCount() {
 	return 0;
 }
 constexpr const char **Vulkan::layerNames() {
 	return nullptr;
 }
+#endif
 
-constexpr uint32_t Vulkan::extensionCount() {
-	return 5;
+
+constexpr uint32_t Vulkan::instExtensionCount() {
+	return 2;
 }
-
-const char *extNames[Vulkan::extensionCount()] = {
+const char *extNames[Vulkan::instExtensionCount()] = {
 	VK_KHR_SURFACE_EXTENSION_NAME,
 	VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME
-	VK_KHR_DISPLAY_EXTENSION_NAME,
-	VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME
+	//VK_KHR_DISPLAY_EXTENSION_NAME
 };
-
-constexpr const char **Vulkan::extensionNames() {
+constexpr const char **Vulkan::instExtensionNames() {
 	return extNames;
+}
+
+
+constexpr uint32_t Vulkan::devExtensionCount() {
+	return 1;
+}
+const char *devExtNames[Vulkan::devExtensionCount()] = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	//VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME
+};
+constexpr const char **Vulkan::devExtensionNames() {
+	return devExtNames;
 }
 
 constexpr uint32_t Vulkan::apiVersion() {
@@ -325,7 +351,10 @@ void Device::Release() {
 	}
 }
 
-Device::Device() : m_parent(nullptr), m_device(VK_NULL_HANDLE),
+Device::Device() : m_parent(nullptr),
+	m_device(VK_NULL_HANDLE), 
+	m_renderComplete(VK_NULL_HANDLE), m_presentComplete(VK_NULL_HANDLE),
+	m_cmdPrePresent(VK_NULL_HANDLE), m_cmdPostPresent(VK_NULL_HANDLE),
 	pfnCreateSwapchainKHR(nullptr),
 	pfnDestroySwapchainKHR(nullptr),
 	pfnGetSwapchainImagesKHR(nullptr),
@@ -341,6 +370,8 @@ Device::Device() : m_parent(nullptr), m_device(VK_NULL_HANDLE),
 	pfnCreateSharedSwapchainsKHR(nullptr)
 {
 	m_gpuProps = {};
+	m_queues = {};
+	m_commandPools = {};
 }
 
 void Device::Join()
@@ -561,15 +592,16 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	out->ResizeVectors(numAttachments);
 	std::vector<VkAttachmentDescription> attachmentDescs(numAttachments);
 	std::vector<VkAttachmentReference> attachmentRefs(numAttachments);
-
+	VkResult res;
 	uint32_t i;
 
 	//Create and store the images used in the frame buffer
 	VkImageCreateInfo image_create_info = Init<VkImageCreateInfo>::Texture2D(resolution, VK_FORMAT_UNDEFINED, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	for (i = 0; i < colorFormats.size(); ++i)
 	{ //Color attachment
-		image_create_info.format = static_cast<VkFormat>(colorFormats[i]);
-		if (Failed( vkCreateImage(m_device, &image_create_info, nullptr, &out->m_images[i]) ))
+		image_create_info.format = colorFormats[i];
+		res = vkCreateImage(m_device, &image_create_info, nullptr, &out->m_images[i]);
+		if (Failed(res))
 		{
 			Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() could not create all color images");
 			return nullptr;
@@ -577,10 +609,11 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	}
 	for (; i < numAttachments; ++i)
 	{ //Depth attachment
-		image_create_info.format = static_cast<VkFormat>(colorFormats[i]);
+		image_create_info.format = m_gpuProps.depthFormat;
 		image_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		image_create_info.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-		if (Failed( vkCreateImage(m_device, &image_create_info, nullptr, &out->m_images[i]) ))
+		res = vkCreateImage(m_device, &image_create_info, nullptr, &out->m_images[i]);
+		if (Failed(res))
 		{
 			Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() could not create all depth images");
 			return nullptr;
@@ -589,6 +622,8 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	
 	//Allocate and store device memory for the images
 	VkMemoryAllocateInfo memAlloc = {};
+	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memAlloc.pNext = nullptr;
 	VkMemoryRequirements memReqs;
 	for (i = 0; i < numAttachments; ++i)
 	{ //Does not need to be split up between color and depth stencil attachments
@@ -599,12 +634,14 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 			Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() could not determine appropriate memory type for all images");
 			return nullptr;
 		}
-		if (Failed( vkAllocateMemory(m_device, &memAlloc, nullptr, &out->m_memory[i]) ))
+		res = vkAllocateMemory(m_device, &memAlloc, nullptr, &out->m_memory[i]);
+		if (Failed(res))
 		{
 			Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() could not allocate memory for all images");
 			return nullptr;
 		}
-		if (Failed( vkBindImageMemory(m_device, out->m_images[i], out->m_memory[i], 0) ))
+		vkBindImageMemory(m_device, out->m_images[i], out->m_memory[i], 0);
+		if (Failed(res))
 		{
 			Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() could not bind memory for all images");
 			return nullptr;
@@ -616,8 +653,9 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	for (i = 0; i < colorFormats.size(); ++i)
 	{ //Color attachment
 		view_create_info.image = out->m_images[i];
-		view_create_info.format = static_cast<VkFormat>(colorFormats[i]);
-		if (Failed( vkCreateImageView(m_device, &view_create_info, nullptr, &out->m_views[i]) ))
+		view_create_info.format = colorFormats[i];
+		res = vkCreateImageView(m_device, &view_create_info, nullptr, &out->m_views[i]);
+		if (Failed(res))
 		{
 			Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() could not create all color image views");
 			return nullptr;
@@ -626,9 +664,10 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	for (; i < numAttachments; ++i)
 	{ //Depth attachment
 		view_create_info.image = out->m_images[i];
-		view_create_info.format = static_cast<VkFormat>(m_gpuProps.depthFormat);
+		view_create_info.format = m_gpuProps.depthFormat;
 		view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-		if (Failed( vkCreateImageView(m_device, &view_create_info, nullptr, &out->m_views[i]) ))
+		res = vkCreateImageView(m_device, &view_create_info, nullptr, &out->m_views[i]);
+		if (Failed(res))
 		{
 			Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() could not create all the depth stencil image view");
 			return nullptr;
@@ -636,11 +675,11 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	}
 
 	//Create the attachment descriptions, and store the formats
-	for (i = 0; colorFormats.size(); ++i)
+	for (i = 0; i < colorFormats.size(); ++i)
 	{ //Color attachment
-		attachmentDescs[i] = Init<VkAttachmentDescription>::Color(static_cast<VkFormat>(colorFormats[i]));
+		attachmentDescs[i] = Init<VkAttachmentDescription>::Color(colorFormats[i]);
 		attachmentRefs[i] = { i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
-		out->m_formats[i] = static_cast<VkFormat>(colorFormats[i]);
+		out->m_formats[i] = colorFormats[i];
 	}
 	for (; i < numAttachments; ++i)
 	{ //Depth attachment
@@ -663,7 +702,8 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	rp_create_info.subpassCount = 1;
 	rp_create_info.pSubpasses = &subpassDesc;
 	
-	if (Failed( vkCreateRenderPass(m_device, &rp_create_info, nullptr, &out->m_renderPass) ))
+	res = vkCreateRenderPass(m_device, &rp_create_info, nullptr, &out->m_renderPass);
+	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() could not create the render pass");
 		return nullptr;
@@ -671,7 +711,8 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 
 	VkFramebufferCreateInfo fb_create_info = Init<VkFramebufferCreateInfo>::Create(out->m_renderPass, resolution, out->m_views);
 	
-	if (Failed(vkCreateFramebuffer(m_device, &fb_create_info, nullptr, &out->m_frameBuffer)))
+	res = vkCreateFramebuffer(m_device, &fb_create_info, nullptr, &out->m_frameBuffer);
+	if (Failed(res))
 	{
 		Basilisk::errors.push("Basilisk::Device::CreateFrameBuffer() could not create the frame buffer");
 		return nullptr;
@@ -1219,13 +1260,13 @@ std::shared_ptr<Instance> Vulkan::Initialize(const std::string &appName, uint32_
 	VkInstanceCreateInfo instanceInfo =
 	{
 		VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-		nullptr,           //Must be NULL
-		0,                 //No flags
-		&appInfo,          //Let the GPU know who we are
-		layerCount(),      //Number of layers
-		layerNames(),      //Which layers we're using
-		extensionCount(),  //Number of extensions
-		extensionNames()   //Which extensions we're using
+		nullptr,               //Must be NULL
+		0,                     //No flags
+		&appInfo,              //Let the GPU know who we are
+		layerCount(),          //Number of layers
+		layerNames(),          //Which layers we're using
+		instExtensionCount(),  //Number of extensions
+		instExtensionNames()   //Which extensions we're using
 	};
 
 	//           Rely on automatic memory allocation ----v
@@ -1238,7 +1279,7 @@ std::shared_ptr<Instance> Vulkan::Initialize(const std::string &appName, uint32_
 
 	//Grab Vulkan callbacks for surfaces
 	out->pfnDestroySurfaceKHR = reinterpret_cast<PFN_vkDestroySurfaceKHR>(vkGetInstanceProcAddr(out->m_instance, "vkDestroySurfaceKHR"));
-	out->pfnGetPhysicalDeviceSurfaceCapabilitiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(out->m_instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
+	out->pfnGetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(vkGetInstanceProcAddr(out->m_instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
 	out->pfnGetPhysicalDeviceSurfaceCapabilitiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(out->m_instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
 	out->pfnGetPhysicalDeviceSurfaceFormatsKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceFormatsKHR>(vkGetInstanceProcAddr(out->m_instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
 	out->pfnGetPhysicalDeviceSurfacePresentModesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddr(out->m_instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
@@ -1361,10 +1402,7 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 	out->m_gpuProps = m_gpuProps[gpuIndex];
 	VkResult res;
 
-	//
-	////Create the device
-	//
-
+	//Create the device
 	float queue_priorities[1] = { 1.0 };
 	VkDeviceQueueCreateInfo queue_info[1] =
 	{
@@ -1380,46 +1418,27 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 
 	VkDeviceCreateInfo device_info = {
 		VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-		nullptr,           //Reserved
-		0,                 //Flags
-		1,                 //Queue count
-		queue_info,        //Queue properties
-		layerCount(),      //Layer count
-		layerNames(),      //Layer types
-		extensionCount(),  //Extension count
-		extensionNames(),  //Extension names
-		nullptr            //Not enabling any device features
+		nullptr,              //Reserved
+		0,                    //Flags
+		1,                    //Queue count
+		queue_info,           //Queue properties
+		layerCount(),         //Layer count
+		layerNames(),         //Layer types
+		devExtensionCount(),  //Extension count
+		devExtensionNames(),  //Extension names
+		nullptr               //Not enabling any device features
 	};
 
-	if (Failed(vkCreateDevice(m_gpus[gpuIndex], &device_info, nullptr, &out->m_device)))
+	res = vkCreateDevice(m_gpus[gpuIndex], &device_info, nullptr, &out->m_device);
+	if (Failed(res))
 	{
 		Basilisk::errors.push("Vulkan::Instance::CreateDevice() failed to create the device");
 		return nullptr;
 	}
-	//Store Vulkan extension function pointers
+	//Store the queues we created above in the device
+	vkGetDeviceQueue(out->m_device, m_presentTarget->queueIndex, 0, &out->m_queues[graphicsIndex]);
 
-	//VK_KHR_swapchain function pointers
-	out->pfnCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateSwapchainKHR"));
-	out->pfnDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(vkGetDeviceProcAddr(out->m_device, "vkDestroySwapchainKHR"));
-	out->pfnGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetSwapchainImagesKHR"));
-	out->pfnAcquireNextImageKHR = reinterpret_cast<PFN_vkAcquireNextImageKHR>(vkGetDeviceProcAddr(out->m_device, "vkAcquireNextImageKHR"));
-	out->pfnQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(vkGetDeviceProcAddr(out->m_device, "vkQueuePresentKHR"));
-	//VK_KHR_display function pointers
-	out->pfnGetPhysicalDeviceDisplayPropertiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceDisplayPropertiesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetPhysicalDeviceDisplayPropertiesKHR"));
-	out->pfnGetPhysicalDeviceDisplayPlanePropertiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceDisplayPlanePropertiesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetPhysicalDeviceDisplayPlanePropertiesKHR"));
-	out->pfnGetDisplayPlaneSupportedDisplaysKHR = reinterpret_cast<PFN_vkGetDisplayPlaneSupportedDisplaysKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetDisplayPlaneSupportedDisplaysKHR"));
-	out->pfnGetDisplayModePropertiesKHR = reinterpret_cast<PFN_vkGetDisplayModePropertiesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetDisplayModePropertiesKHR"));
-	out->pfnCreateDisplayModeKHR = reinterpret_cast<PFN_vkCreateDisplayModeKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateDisplayModeKHR"));
-	out->pfnGetDisplayPlaneCapabilitiesKHR = reinterpret_cast<PFN_vkGetDisplayPlaneCapabilitiesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetDisplayPlaneCapabilitiesKHR"));
-	out->pfnCreateDisplayPlaneSurfaceKHR = reinterpret_cast<PFN_vkCreateDisplayPlaneSurfaceKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateDisplayPlaneSurfaceKHR"));
-	//VK_KHR_display_swapchain function pointers
-	out->pfnCreateSharedSwapchainsKHR = reinterpret_cast<PFN_vkCreateSharedSwapchainsKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateSharedSwapchainsKHR"));
-
-	//
-	////Create the device's command pool(s)
-	//
-
-	//For graphics queue
+	//Create the device's graphics command pool
 	VkCommandPoolCreateInfo render_pool_info = Init<VkCommandPoolCreateInfo>::Create(m_presentTarget->queueIndex);
 
 	res = vkCreateCommandPool(out->m_device, &render_pool_info, nullptr, &out->m_commandPools[graphicsIndex]);
@@ -1429,10 +1448,7 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 		return nullptr;
 	}
 
-	//Store the queues we created above in the device
-	vkGetDeviceQueue(out->m_device, m_presentTarget->queueIndex, 0, &out->m_queues[graphicsIndex]);
-
-	//Create semaphores for each queue
+	//Create built-in semaphores for rendering and presentation
 	VkSemaphoreCreateInfo semaphore_info = {
 		VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
 		nullptr,  //Reserved
@@ -1482,6 +1498,25 @@ std::shared_ptr<Device> Instance::CreateDevice(uint32_t gpuIndex)
 	out->m_submitInfo.signalSemaphoreCount = 1;
 	out->m_submitInfo.pSignalSemaphores = &out->m_renderComplete;
 
+	//Store Vulkan extension function pointers
+
+	//VK_KHR_swapchain function pointers
+	out->pfnCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateSwapchainKHR"));
+	out->pfnDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(vkGetDeviceProcAddr(out->m_device, "vkDestroySwapchainKHR"));
+	out->pfnGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetSwapchainImagesKHR"));
+	out->pfnAcquireNextImageKHR = reinterpret_cast<PFN_vkAcquireNextImageKHR>(vkGetDeviceProcAddr(out->m_device, "vkAcquireNextImageKHR"));
+	out->pfnQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(vkGetDeviceProcAddr(out->m_device, "vkQueuePresentKHR"));
+	//VK_KHR_display function pointers
+	out->pfnGetPhysicalDeviceDisplayPropertiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceDisplayPropertiesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetPhysicalDeviceDisplayPropertiesKHR"));
+	out->pfnGetPhysicalDeviceDisplayPlanePropertiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceDisplayPlanePropertiesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetPhysicalDeviceDisplayPlanePropertiesKHR"));
+	out->pfnGetDisplayPlaneSupportedDisplaysKHR = reinterpret_cast<PFN_vkGetDisplayPlaneSupportedDisplaysKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetDisplayPlaneSupportedDisplaysKHR"));
+	out->pfnGetDisplayModePropertiesKHR = reinterpret_cast<PFN_vkGetDisplayModePropertiesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetDisplayModePropertiesKHR"));
+	out->pfnCreateDisplayModeKHR = reinterpret_cast<PFN_vkCreateDisplayModeKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateDisplayModeKHR"));
+	out->pfnGetDisplayPlaneCapabilitiesKHR = reinterpret_cast<PFN_vkGetDisplayPlaneCapabilitiesKHR>(vkGetDeviceProcAddr(out->m_device, "vkGetDisplayPlaneCapabilitiesKHR"));
+	out->pfnCreateDisplayPlaneSurfaceKHR = reinterpret_cast<PFN_vkCreateDisplayPlaneSurfaceKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateDisplayPlaneSurfaceKHR"));
+	//VK_KHR_display_swapchain function pointers
+	out->pfnCreateSharedSwapchainsKHR = reinterpret_cast<PFN_vkCreateSharedSwapchainsKHR>(vkGetDeviceProcAddr(out->m_device, "vkCreateSharedSwapchainsKHR"));
+
 
 	return out;
 }
@@ -1491,11 +1526,6 @@ bool Instance::HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance
 	if (m_gpus.size() == 0 || gpuIndex > m_gpus.size() - 1)
 	{
 		Basilisk::errors.push("Vulkan::Instance::HookWin32Window()::gpuIndex is out of range");
-		return false;
-	}
-	if (WAIT_TIMEOUT != WaitForSingleObject(hInstance, 0)) //Uses a bit of a hack to figure out if the process is running
-	{ //With a time-out of zero, anything other than WAIT_TIMEOUT means the process doesn't exist
-		Basilisk::errors.push("Vulkan::Instance::HookWin32Window()::hInstance is not a valid instance");
 		return false;
 	}
 	if (!IsWindow(hWnd))
