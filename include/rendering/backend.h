@@ -1,7 +1,7 @@
 /**
 \file   backend.h
 \author Andrew Baxter
-\date   March 13, 2016
+\date   March 14, 2016
 
 The virtual interface with the Vulkan API
 
@@ -94,6 +94,7 @@ namespace Vulkan
 	public:
 		~SwapChain() = default;
 		friend class Device;
+		friend class CommandBuffer;
 
 		uint32_t GetBufferIndex();
 	private:
@@ -239,11 +240,13 @@ namespace Vulkan
 
 		void SetScissor(const VkRect2D &scissor);
 
+		void Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst, uint32_t fbIndex, uint32_t scIndex);
+
+		//template<uint32_t count> Blit(const std::shared_ptr<ImageSet<count>> &src, const std::shared_ptr<ImageSet<count>> &dst);
+
 		void EndRendering();
 
 		bool End();
-
-
 
 		void WriteBundle(const std::shared_ptr<CommandBuffer> &bundle);
 

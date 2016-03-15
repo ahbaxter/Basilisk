@@ -1,7 +1,7 @@
 /**
 \file   sdl_demo.cpp
 \author Andrew Baxter
-\date   March 12, 2016
+\date   March 14, 2016
 
 Boots up a window and clears it a solid color each frame
 \todo Rework smart pointer management. At the moment, I can't rely on them deconstructing in the required order without nasty brackets.
@@ -100,15 +100,6 @@ int main(int argc, char *argv[])
 		auto cmdDraw = device->CreateCommandBuffer(Vulkan::graphicsIndex);
 		if (!cmdDraw) return Dump();
 
-		//Fill the draw command buffer
-		if (!cmdDraw->Begin(true)) return Dump();
-		std::vector<VkClearValue> clearValues(1);
-		clearValues[0].color = { 0.0f, 0.0f, 1.0f, 0.0f };
-		cmdDraw->BeginRendering(frameBuffer, clearValues, false);
-		//cmdDraw->BindGraphicsPipeline(pipeline);
-		cmdDraw->EndRendering();
-		if (!cmdDraw->End()) return Dump();
-
 		SDL_Event windowEvent;
 		unsigned long long fence = 0;
 		SDL_PollEvent(&windowEvent);
@@ -120,9 +111,19 @@ int main(int argc, char *argv[])
 			uint32_t currentBuffer = swapChain->GetBufferIndex();
 
 			if (!device->PostPresent(swapChain, currentBuffer)) return Dump();
-			if (!device->ExecuteCommands({ cmdDraw })) return Dump();
-			if (!device->PrePresent(swapChain, currentBuffer)) return Dump();
 
+			//Fill the draw command buffer
+			if (!cmdDraw->Begin(true)) return Dump();
+			std::vector<VkClearValue> clearValues(1);
+			clearValues[0].color = { 0.0f, 0.0f, 0.2f, 0.0f };
+			cmdDraw->BeginRendering(frameBuffer, clearValues, false);
+			cmdDraw->EndRendering();
+			cmdDraw->Blit(frameBuffer, swapChain, 0, currentBuffer); //Can't be baked because of the way I've set up frame buffers. Consider changing.
+			if (!cmdDraw->End()) return Dump();
+
+			if (!device->ExecuteCommands({ cmdDraw })) return Dump();
+
+			if (!device->PrePresent(swapChain, currentBuffer)) return Dump();
 			device->Present(swapChain, currentBuffer);
 
 			device->Join();

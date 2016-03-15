@@ -1,7 +1,7 @@
 /**
 \file   backend.cpp
 \author Andrew Baxter
-\date   March 13, 2016
+\date   March 14, 2016
 
 Defines the behavior of the Vulkan rendering backend
 
@@ -247,7 +247,28 @@ void CommandBuffer::SetScissor(const VkRect2D &scissor)
 	vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
+void CommandBuffer::Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst, uint32_t fbIndex, uint32_t scIndex)
+{
+	SetImageLayout(src->m_images[fbIndex], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
+	VkImageBlit region;
+	region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.srcSubresource.mipLevel = 0;
+	region.srcSubresource.baseArrayLayer = 0;
+	region.srcSubresource.layerCount = 1;
+	region.srcOffsets[0] = { 0, 0, 0 };
+	region.srcOffsets[1] = { static_cast<int32_t>(src->m_renderArea.extent.width), static_cast<int32_t>(src->m_renderArea.extent.height), 1 }; //THIS IS WRONG
+	region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.dstSubresource.mipLevel = 0;
+	region.dstSubresource.baseArrayLayer = 0;
+	region.dstSubresource.layerCount = 1;
+	region.dstOffsets[0] = { 0, 0, 0 };
+	region.dstOffsets[1] = { static_cast<int32_t>(src->m_renderArea.extent.width), static_cast<int32_t>(src->m_renderArea.extent.height), 1 }; //THIS IS WRONG
+
+	vkCmdBlitImage(m_commandBuffer, src->m_images[fbIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst->m_backBuffers[scIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
+
+	SetImageLayout(src->m_images[fbIndex], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+}
 
 void CommandBuffer::DrawIndexed(uint32_t count)
 {
