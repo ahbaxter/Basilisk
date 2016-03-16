@@ -1,7 +1,7 @@
 /**
 \file   backend.cpp
 \author Andrew Baxter
-\date   March 15, 2016
+\date   March 16, 2016
 
 Defines the behavior of the Vulkan rendering backend
 
@@ -545,8 +545,7 @@ std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<Command
 		return nullptr;
 	}
 
-	out->pfnAcquireNextImage = std::bind(pfnAcquireNextImageKHR, m_device, out->m_swapChain, UINT64_MAX, m_presentComplete, nullptr, std::placeholders::_1);
-
+	out->pfnAcquireNextImage = std::bind(pfnAcquireNextImageKHR, m_device, out->m_swapChain, UINT64_MAX, m_presentComplete, static_cast<VkFence>(VK_NULL_HANDLE), std::placeholders::_1);
 	return out;
 }
 

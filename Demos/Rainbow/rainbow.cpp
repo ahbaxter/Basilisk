@@ -1,7 +1,7 @@
 /**
 \file   rainbow.cpp
 \author Andrew Baxter
-\date   March 15, 2016
+\date   March 16, 2016
 
 Boots up a window and clears it a different color of the rainbow, cycling back through every 20 seconds
 
@@ -58,10 +58,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam)
 		case WM_KEYDOWN:
 		{
 			if (wparam == VK_ESCAPE)
-			{
 				PostQuitMessage(0);
-				return 0;
-			}
+
+			return 0;
+		}
+		default:
+		{
+			return DefWindowProc(hwnd, umessage, wparam, lparam);
 		}
 	}
 }
