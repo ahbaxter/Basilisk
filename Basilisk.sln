@@ -18,6 +18,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Editor", "Editor\Editor.csp
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Basilisk", "Basilisk.vcxproj", "{0A846673-CE71-47E0-A693-587F347471FD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B39ED2B3-D53A-4077-B957-930979A3577D} = {B39ED2B3-D53A-4077-B957-930979A3577D}
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dependencies", "Dependencies", "{F4C645C5-3219-4328-8166-85999F710C26}"
 EndProject
@@ -44,6 +47,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ZLib", "dependencies\FreeImage\Source\ZLib\ZLib.2013.vcxproj", "{33134F61-C1AD-4B6F-9CEA-503A9F140C52}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Rainbow", "Demos\Rainbow\Rainbow.vcxproj", "{D5A45DAE-77DD-40EF-AC1B-8EAF806DEB65}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0A846673-CE71-47E0-A693-587F347471FD} = {0A846673-CE71-47E0-A693-587F347471FD}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
