@@ -1,14 +1,13 @@
 /**
 \file   backend.h
 \author Andrew Baxter
-\date   March 14, 2016
+\date   March 15, 2016
 
 The virtual interface with the Vulkan API
 
-\todo Check if all requested extensions are supported
+\todo Verbose error reporting of VkResults
 \todo Device::CreateBuffer(...)
 \todo Graphics pipeline vertex input layout
-\todo Boot up Vulkan with a monitor target
 \todo Can FrameBuffer image memory be contiguous?
 
 */
@@ -16,78 +15,15 @@ The virtual interface with the Vulkan API
 #ifndef BASILISK_BACKEND_H
 #define BASILISK_BACKEND_H
 
+#include <atomic>
 #include "common.h"
 
 
 namespace Vulkan
 {
-	//Configuration details
-	extern constexpr uint32_t layerCount();
-	extern constexpr const char **layerNames();
-
-	extern constexpr uint32_t instExtensionCount();
-	extern constexpr const char **instExtensionNames();
-	extern constexpr uint32_t devExtensionCount();
-	extern constexpr const char **devExtensionNames();
-
-	extern constexpr uint32_t apiVersion();
-
 	constexpr uint32_t numQueues = 1; //Consolidated render + present queue
 	constexpr uint32_t graphicsIndex = 0; //Index of graphics (render + present) queue
-
-
-	template<uint32_t count>
-	struct ImageSet
-	{
-	public:
-		~ImageSet() = default;
-		friend class Device;
-
-		static VkImage LoadFromFile(VkDevice device, const std::string &filename, VkFormat format);
-		static VkImage LoadFromData(VkDevice device, const char *bytes, VkFormat format);
-
-	private:
-		ImageSet() {
-			m_resolution = { 0, 0, 0 };
-		}
-
-		void Release(VkDevice device) //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
-		{
-			for (uint32_t i = 0; i < m_images.size(); ++i)
-			{
-				m_formats[i] = VK_FORMAT_UNDEFINED;
-
-				if (m_samplers[i]) {
-					vkDestroySampler(device, m_samplers[i], nullptr);
-					m_samplers[i] = VK_NULL_HANDLE;
-				}
-
-				if (m_views[i]) {
-					vkDestroyImageView(device, m_views[i], nullptr);
-					m_views[i] = VK_NULL_HANDLE;
-				}
-
-				if (m_memory[i]) {
-					vkFreeMemory(device, m_memory[i], nullptr);
-					m_memory[i] = VK_NULL_HANDLE;
-				}
-
-				if (m_images[i]) {
-					vkDestroyImage(device, m_images[i], nullptr);
-					m_images[i] = VK_NULL_HANDLE;
-				}
-			}
-		}
-
-		std::array<VkImage, count> m_images;
-		std::array<VkImageView, count> m_views;
-		std::array<VkDeviceMemory, count> m_memory;
-		std::array<VkFormat, count> m_formats;
-		std::array<VkSampler, count> m_samplers;
-
-		glm::uvec3 m_resolution; //Any unused dimension should be set to 1
-	};
-	typedef ImageSet<1> Image;
+	
 
 	class SwapChain
 	{
@@ -96,7 +32,10 @@ namespace Vulkan
 		friend class Device;
 		friend class CommandBuffer;
 
-		uint32_t GetBufferIndex();
+		void NextBuffer();
+		inline const uint32_t *GetBufferIndex() {
+			return &m_currentImage;
+		}
 	private:
 		SwapChain();
 
@@ -104,9 +43,8 @@ namespace Vulkan
 
 		VkSwapchainKHR m_swapChain;
 
-		//List of all backbuffers
-		std::vector<VkImage> m_backBuffers;
-		std::vector<VkImageView> m_backBufferViews;
+		//One per backbuffer
+		std::vector<VkImage> m_images;
 
 		std::function<void(uint32_t *bufferIndex)> pfnAcquireNextImage;
 		uint32_t m_currentImage;
@@ -240,9 +178,7 @@ namespace Vulkan
 
 		void SetScissor(const VkRect2D &scissor);
 
-		void Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst, uint32_t fbIndex, uint32_t scIndex);
-
-		//template<uint32_t count> Blit(const std::shared_ptr<ImageSet<count>> &src, const std::shared_ptr<ImageSet<count>> &dst);
+		void Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst, uint32_t fbIndex);
 
 		void EndRendering();
 
@@ -387,36 +323,32 @@ namespace Vulkan
 		Prepares a backbuffer for presenting
 
 		\param[in] swapChain The swap chain to prepare
-		\param[in] bufferIndex Which buffer in the swap chain to prepare
 		\return If successful, `true`. If failed, `false`.
 		*/
-		bool PrePresent(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex);
+		bool PrePresent(const std::shared_ptr<SwapChain> &swapChain);
 		/**
 		Presents the most recent backbuffer
 		
 		\param[in] swapChain The swap chain to present
-		\param[in] bufferIndex Which buffer in the swap chain to present
 		\return If successful, `true`. If failed, `false`.
 
 		\todo Enable/disable vsync?
 		*/
-		bool Present(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex);
+		bool Present(const std::shared_ptr<SwapChain> &swapChain);
 		/**
 		Prepares a backbuffer for rendering
 
 		\param[in] swapChain The swap chain to prepare
-		\param[in] bufferIndex Which buffer in the swap chain to prepare
 		\return If successful, `true`. If failed, `false`.
 		*/
-		bool PostPresent(const std::shared_ptr<SwapChain> &swapChain, uint32_t bufferIndex);
-
+		bool PostPresent(const std::shared_ptr<SwapChain> &swapChain);
 	private:
 		Device();
 
 		void Release(); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
-		Instance *m_parent;
 		GpuProperties m_gpuProps;
+		PresentableSurface m_targetSurface;
 
 		VkDevice m_device;
 		std::array<VkQueue, numQueues> m_queues;
@@ -431,7 +363,7 @@ namespace Vulkan
 		PFN_vkGetSwapchainImagesKHR pfnGetSwapchainImagesKHR;
 		PFN_vkAcquireNextImageKHR pfnAcquireNextImageKHR;
 		PFN_vkQueuePresentKHR pfnQueuePresentKHR;
-		//VK_KHR_display function pointers
+		/*VK_KHR_display function pointers
 		PFN_vkGetPhysicalDeviceDisplayPropertiesKHR pfnGetPhysicalDeviceDisplayPropertiesKHR;
 		PFN_vkGetPhysicalDeviceDisplayPlanePropertiesKHR pfnGetPhysicalDeviceDisplayPlanePropertiesKHR;
 		PFN_vkGetDisplayPlaneSupportedDisplaysKHR pfnGetDisplayPlaneSupportedDisplaysKHR;
@@ -440,7 +372,7 @@ namespace Vulkan
 		PFN_vkGetDisplayPlaneCapabilitiesKHR pfnGetDisplayPlaneCapabilitiesKHR;
 		PFN_vkCreateDisplayPlaneSurfaceKHR pfnCreateDisplayPlaneSurfaceKHR;
 		//VK_KHR_display_swapchain function pointers
-		PFN_vkCreateSharedSwapchainsKHR pfnCreateSharedSwapchainsKHR;
+		PFN_vkCreateSharedSwapchainsKHR pfnCreateSharedSwapchainsKHR;*/
 		
 
 		//Helper functions
@@ -455,12 +387,13 @@ namespace Vulkan
 	{
 	public:
 		~Instance() = default;
+
 		friend std::shared_ptr<Instance> Initialize(const std::string &appName, uint32_t appVersion = 1);
 
 		/**
 		Counts and internally stores all connected GPUs
 
-		\return The number of GPUs Vulkan could find
+		\return The number of GPUs Vulkan found
 		*/
 		uint32_t FindGpus();
 
@@ -473,49 +406,25 @@ namespace Vulkan
 		const GpuProperties *GetGpuProperties(uint32_t gpuIndex);
 		
 		/**
-		Creates a Vulkan device on the specified GPU
+		Creates a Vulkan device on the specified GPU, presenting to a given window
 
 		\param[in] gpuIndex Which GPU to target
+		\param[in] hWnd The Win32 window handle to present to
+		\param[in] hInstance The Win32 instance handle to use
 		\return If successful, a pointer to the resulting device. If failed, `nullptr`.
 
 		\todo Multithreaded command pools
 		*/
-		std::shared_ptr<Device> CreateDevice(uint32_t gpuIndex);
-
-		/**
-		Sets the presentation target to a Win32 window
-
-		\param[in] gpuIndex Which GPU to use
-		\param[in] hWnd Handle to the Win32 window
-		\param[in] hInstance Handle to the Win32 instance
-		\return `true` if successful. `false` if failed.
-		*/
-		bool HookWin32Window(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance);
-
-		/**
-		Sets the presentation target to a monitor
-
-		\param[in] monitorIndex Which monitor to start on
-		\return `true` if successful. `false` if failed.
-		*/
-		bool HookMonitor(uint32_t monitorIndex);
-
-		inline const PresentableSurface *GetPresentTarget() {
-			return m_presentTarget;
-		}
-
+		std::shared_ptr<Device> CreateDeviceOnWindow(uint32_t gpuIndex, HWND hWnd, HINSTANCE hInstance);
 	private:
 		Instance();
-
 		void Release(); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
+
+
 
 		VkInstance m_instance;
 		std::vector<GpuProperties> m_gpuProps;
 		std::vector<VkPhysicalDevice> m_gpus;
-
-
-		//Locations the device could potentially present to
-		PresentableSurface *m_presentTarget;
 
 		//VK_KHR_surface function pointers
 		PFN_vkDestroySurfaceKHR pfnDestroySurfaceKHR;
@@ -536,7 +445,7 @@ namespace Vulkan
 	\param[in] appVersion The version of your application. Defaults to 1.
 	\return The number of GPUs connected to this computer. 0 indicates failure.
 	*/
-	std::shared_ptr<Instance> Initialize(const std::string &appName, uint32_t appVersion); //appVersion was forward-declared to default to 1 as a friend to `Instance`
+	std::shared_ptr<Instance> Initialize(const std::string &appName, uint32_t appVersion);
 }
 
 #endif
