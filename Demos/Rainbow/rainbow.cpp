@@ -1,7 +1,7 @@
 /**
 \file   rainbow.cpp
 \author Andrew Baxter
-\date   March 16, 2016
+\date   March 17, 2016
 
 Boots up a window and clears it a different color of the rainbow, cycling back through every 20 seconds
 
@@ -16,7 +16,7 @@ Boots up a window and clears it a different color of the rainbow, cycling back t
 
 HWND hWnd = NULL;
 HINSTANCE hInstance = NULL;
-constexpr const char *appName = "Hello World";
+constexpr const char *appName = "Rainbow Demo";
 constexpr uint32_t appVersion = 1;
 constexpr bool fullScreen = true;
 
@@ -133,9 +133,9 @@ void closeWindow()
 glm::vec3 HueToRGB(float h)
 {
 	glm::vec3 rgb;
-	rgb.r = glm::clamp(abs(h * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f);
-	rgb.g = glm::clamp(2.0f - abs(h * 6.0f - 2.0f), 0.0f, 1.0f);
-	rgb.b = glm::clamp(2.0f - abs(h * 6.0f - 4.0f), 0.0f, 1.0f);
+	rgb.r = glm::clamp(std::abs(h * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f);
+	rgb.g = glm::clamp(2.0f - std::abs(h * 6.0f - 2.0f), 0.0f, 1.0f);
+	rgb.b = glm::clamp(2.0f - std::abs(h * 6.0f - 4.0f), 0.0f, 1.0f);
 	return rgb;
 }
 
@@ -147,7 +147,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pScmdline
 		w = GetSystemMetrics(SM_CXSCREEN);
 		h = GetSystemMetrics(SM_CYSCREEN);
 	}
-
 	initWindow(w, h);
 
 	auto instance = Vulkan::Initialize(appName, appVersion);
@@ -158,13 +157,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pScmdline
 	auto device = instance->CreateDeviceOnWindow(0, hWnd, hInstance); //Make sure to always declare a device before any children, to make sure they can deconstruct properly
 	if (!device) return Dump();
 
-	auto cmdSetup = device->CreateCommandBuffer(Vulkan::graphicsIndex);
-	if (!cmdSetup) return Dump();
-	if (!cmdSetup->Begin(false)) return Dump();
-
-	auto swapChain = device->CreateSwapChain(cmdSetup, { w, h }, 2); //Double-buffered presentation surface
+	auto swapChain = device->CreateSwapChain({ w, h }, 2); //Double-buffered presentation surface
 	if (!swapChain) return Dump();
-	auto frameBuffer = device->CreateFrameBuffer({ w, h }, { VK_FORMAT_R8G8B8A8_UNORM }, false); //A single 32-bit render target (no depth buffer)
+
+	auto frameBuffer = device->CreateFrameBuffer({swapChain->GetAttachmentDesc()}, false); //A render target mirroring the presentation surface, no depth buffer
 	if (!frameBuffer) return Dump();
 
 	auto cmdDraw = device->CreateCommandBuffer(Vulkan::graphicsIndex);
@@ -173,8 +169,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pScmdline
 	auto start = std::chrono::steady_clock::now();
 	uint32_t frameCount = 0;
 
-	MSG msg;
-	ZeroMemory(&msg, sizeof(MSG));
+	MSG msg = {};
+	std::vector<VkClearValue> clearValues(1);
 	//Loop until there is a quit message from the window or the user
 	while (msg.message != WM_QUIT)
 	{
@@ -186,15 +182,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pScmdline
 
 		//Fill the draw command buffer
 		if (!cmdDraw->Begin(true)) return Dump();
-		std::vector<VkClearValue> clearValues(1);
-
 		std::chrono::duration<float> seconds = std::chrono::steady_clock::now() - start;
 		float hue = glm::mod(seconds.count(), 20.0f) / 20.0f;
 		auto rgb = HueToRGB(hue);
-		clearValues[0].color = { rgb.r, rgb.g, rgb.b, 0.0f };
-		cmdDraw->BeginRendering(frameBuffer, clearValues, false);
+
+
+		frameBuffer->SetClearValues({ { rgb.r, rgb.g, rgb.b, 0.0f } });
+		cmdDraw->BeginRendering(frameBuffer, false);
 		cmdDraw->EndRendering();
-		cmdDraw->Blit(frameBuffer, swapChain, 0); //I really shouldn't have to do this. Make it part of the frame buffer
+		cmdDraw->Blit(frameBuffer, swapChain);
 		if (!cmdDraw->End()) return Dump();
 
 		if (!device->ExecuteCommands({ cmdDraw })) return Dump();

@@ -1,7 +1,7 @@
 /**
 \file   backend.cpp
 \author Andrew Baxter
-\date   March 16, 2016
+\date   March 17, 2016
 
 Defines the behavior of the Vulkan rendering backend
 
@@ -60,7 +60,10 @@ constexpr const char **devExtensionNames() {
 }
 #pragma endregion
 
-SwapChain::SwapChain() : m_swapChain(VK_NULL_HANDLE), pfnAcquireNextImage(nullptr) { }
+SwapChain::SwapChain() : m_swapChain(VK_NULL_HANDLE), pfnAcquireNextImage(nullptr)
+{
+	m_desc = {};
+}
 
 void SwapChain::NextBuffer()
 {
@@ -121,6 +124,20 @@ FrameBuffer::FrameBuffer() : m_frameBuffer(VK_NULL_HANDLE), m_renderPass(VK_NULL
 	m_renderArea = { 0, 0, 0, 0 };
 }
 
+bool FrameBuffer::SetClearValues(std::vector<VkClearValue> clearValues)
+{
+	if (clearValues.size() == m_clearValues.size())
+	{
+		std::copy(clearValues.begin(), clearValues.end(), m_clearValues.begin());
+		return true;
+	}
+	else
+	{
+		Basilisk::errors.push("Vulkan::FrameBuffer::SetClearValues()::clearValues does not contain the correct amount of values");
+		return false;
+	}
+}
+
 void FrameBuffer::Release(VkDevice device)
 {
 	if (m_frameBuffer)
@@ -159,6 +176,7 @@ void FrameBuffer::ResizeVectors(uint32_t size)
 	m_views.resize(size);
 	m_formats.resize(size);
 	m_memory.resize(size);
+	m_clearValues.resize(size);
 }
 
 #pragma endregion
@@ -197,22 +215,19 @@ bool CommandBuffer::Begin(bool reusable)
 	return true;
 }
 
-void CommandBuffer::BeginRendering(const std::shared_ptr<FrameBuffer> &target, const std::vector<VkClearValue> &clearValues, bool usingBundles)
+void CommandBuffer::BeginRendering(const std::shared_ptr<FrameBuffer> &target, bool allowBundles)
 {
-	if (clearValues.size() != target->m_images.size())
-		Basilisk::errors.push("Vulkan::CommandBuffer::BeginRendering() was not given the correct number of clear values");
-
 	VkRenderPassBeginInfo rp_info = {
 		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 		nullptr,
 		target->m_renderPass,
 		target->m_frameBuffer,
 		target->m_renderArea,
-		static_cast<uint32_t>(clearValues.size()),
-		clearValues.data()
+		static_cast<uint32_t>(target->m_clearValues.size()),
+		target->m_clearValues.data()
 	};
 
-	vkCmdBeginRenderPass(m_commandBuffer, &rp_info, usingBundles ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS : VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(m_commandBuffer, &rp_info, allowBundles ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS : VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void CommandBuffer::BindGraphicsPipeline(const std::shared_ptr<GraphicsPipeline> &pipeline)
@@ -238,9 +253,9 @@ void CommandBuffer::SetScissor(const VkRect2D &scissor)
 	vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
-void CommandBuffer::Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst, uint32_t fbIndex)
+void CommandBuffer::Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst)
 {
-	SetImageLayout(src->m_images[fbIndex], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	SetImageLayout(src->m_images[0], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
 	VkImageBlit region;
 	region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -248,17 +263,17 @@ void CommandBuffer::Blit(const std::shared_ptr<FrameBuffer> &src, const std::sha
 	region.srcSubresource.baseArrayLayer = 0;
 	region.srcSubresource.layerCount = 1;
 	region.srcOffsets[0] = { 0, 0, 0 };
-	region.srcOffsets[1] = { static_cast<int32_t>(src->m_renderArea.extent.width), static_cast<int32_t>(src->m_renderArea.extent.height), 1 }; //THIS IS WRONG
+	region.srcOffsets[1] = { static_cast<int32_t>(src->m_renderArea.extent.width), static_cast<int32_t>(src->m_renderArea.extent.height), 1 };
 	region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	region.dstSubresource.mipLevel = 0;
 	region.dstSubresource.baseArrayLayer = 0;
 	region.dstSubresource.layerCount = 1;
 	region.dstOffsets[0] = { 0, 0, 0 };
-	region.dstOffsets[1] = { static_cast<int32_t>(src->m_renderArea.extent.width), static_cast<int32_t>(src->m_renderArea.extent.height), 1 }; //THIS IS WRONG
+	region.dstOffsets[1] = { static_cast<int32_t>(src->m_renderArea.extent.width), static_cast<int32_t>(src->m_renderArea.extent.height), 1 };
 
-	vkCmdBlitImage(m_commandBuffer, src->m_images[fbIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst->m_images[*dst->GetBufferIndex()], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
+	vkCmdBlitImage(m_commandBuffer, src->m_images[0], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst->m_images[*dst->GetBufferIndex()], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
 
-	SetImageLayout(src->m_images[fbIndex], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	SetImageLayout(src->m_images[0], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 }
 
 void CommandBuffer::DrawIndexed(uint32_t count)
@@ -422,15 +437,8 @@ std::shared_ptr<CommandBuffer> Device::CreateCommandBuffer(uint32_t poolIndex, b
 	return out;
 }
 
-std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<CommandBuffer> &setup, glm::uvec2 resolution, uint32_t numBuffers)
+std::shared_ptr<SwapChain> Device::CreateSwapChain(glm::uvec2 resolution, uint32_t numBuffers)
 {
-	if (nullptr == setup)
-	{
-		Basilisk::errors.push("Vulkan::Device::CreateSwapChain()::setupBuffer must not be a null pointer");
-		return nullptr;
-	}
-
-	//Meets all prerequisites
 	
 	//
 	////Calculate the swap chain's resolution (may differ from the `resolution` argument)
@@ -494,6 +502,11 @@ std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<Command
 			ptr = nullptr;
 		}
 	);
+	out->m_desc.width = resolution.x;
+	out->m_desc.height = resolution.y;
+	out->m_desc.format = m_targetSurface.colorFormat;
+	out->m_desc.load = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	out->m_desc.store = VK_ATTACHMENT_STORE_OP_STORE;
 
 	VkSwapchainCreateInfoKHR swapchain_info = 
 	{
@@ -536,7 +549,6 @@ std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<Command
 	}
 
 	out->m_images.resize(numBuffers);
-	//out->m_views.resize(numBuffers);
 
 	res = pfnGetSwapchainImagesKHR(m_device, out->m_swapChain, &numBuffers, out->m_images.data());
 	if (Failed(res))
@@ -549,29 +561,25 @@ std::shared_ptr<SwapChain> Device::CreateSwapChain(const std::shared_ptr<Command
 	return out;
 }
 
-std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, const std::vector<VkFormat> &colorFormats, bool enableDepth)
+std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(const std::vector<AttachmentDesc> &images, bool enableDepth)
 {
-#ifndef BASILISK_FINAL_BUILD
-	if (0 == colorFormats.size() && !enableDepth)
+	if (images.size() == 0)
 	{
-		Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer() must have at least one image attachment");
+		Basilisk::errors.push("Vulkan::Device::CreateFrameBuffer()::images must contain at least one element");
 		return nullptr;
 	}
-#endif
-
-	//Meets all prerequisites
 
 	std::shared_ptr<FrameBuffer> out(new FrameBuffer,
 		[=](FrameBuffer *ptr) {
-			ptr->Release(m_device);
-			delete ptr;
-			ptr = nullptr;
-		}
+		ptr->Release(m_device);
+		delete ptr;
+		ptr = nullptr;
+	}
 	);
 
-	out->m_renderArea = { 0, 0, resolution.x, resolution.y };
+	out->m_renderArea = { 0, 0, images[0].width, images[0].height };
 
-	uint32_t numAttachments = static_cast<uint32_t>(colorFormats.size()) + (enableDepth ? 1 : 0);
+	uint32_t numAttachments = static_cast<uint32_t>(images.size()) + (enableDepth ? 1 : 0);
 	out->ResizeVectors(numAttachments);
 	std::vector<VkAttachmentDescription> attachmentDescs(numAttachments);
 	std::vector<VkAttachmentReference> attachmentRefs(numAttachments);
@@ -579,10 +587,10 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	uint32_t i;
 
 	//Create and store the images used in the frame buffer
-	VkImageCreateInfo image_create_info = Init<VkImageCreateInfo>::Texture2D(resolution, VK_FORMAT_UNDEFINED, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	for (i = 0; i < colorFormats.size(); ++i)
+	VkImageCreateInfo image_create_info = Init<VkImageCreateInfo>::Texture2D({ images[0].width, images[0].height }, VK_FORMAT_UNDEFINED, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	for (i = 0; i < images.size(); ++i)
 	{ //Color attachment
-		image_create_info.format = colorFormats[i];
+		image_create_info.format = images[i].format;
 		res = vkCreateImage(m_device, &image_create_info, nullptr, &out->m_images[i]);
 		if (Failed(res))
 		{
@@ -602,7 +610,7 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 			return nullptr;
 		}
 	}
-	
+
 	//Allocate and store device memory for the images
 	VkMemoryAllocateInfo memAlloc = {};
 	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -633,10 +641,10 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 
 	//Create and store the image views
 	VkImageViewCreateInfo view_create_info = Init<VkImageViewCreateInfo>::Texture2D(VK_NULL_HANDLE, VK_FORMAT_UNDEFINED);
-	for (i = 0; i < colorFormats.size(); ++i)
+	for (i = 0; i < images.size(); ++i)
 	{ //Color attachment
 		view_create_info.image = out->m_images[i];
-		view_create_info.format = colorFormats[i];
+		view_create_info.format = images[i].format;
 		res = vkCreateImageView(m_device, &view_create_info, nullptr, &out->m_views[i]);
 		if (Failed(res))
 		{
@@ -658,33 +666,35 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 	}
 
 	//Create the attachment descriptions, and store the formats
-	for (i = 0; i < colorFormats.size(); ++i)
+	for (i = 0; i < images.size(); ++i)
 	{ //Color attachment
-		attachmentDescs[i] = Init<VkAttachmentDescription>::Color(colorFormats[i]);
+		out->m_formats[i] = images[i].format;
+		attachmentDescs[i] = Init<VkAttachmentDescription>::Color(images[i].format);
+		attachmentDescs[i].loadOp = images[i].load;
 		attachmentRefs[i] = { i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
-		out->m_formats[i] = colorFormats[i];
 	}
 	for (; i < numAttachments; ++i)
 	{ //Depth attachment
-		attachmentDescs[i] = Init<VkAttachmentDescription>::DepthStencil(m_gpuProps.depthFormat);
-		attachmentRefs[i] = { i, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 		out->m_formats[i] = m_gpuProps.depthFormat;
+		attachmentDescs[i] = Init<VkAttachmentDescription>::DepthStencil(m_gpuProps.depthFormat);
+		//There is no reason why depth stencils shouldn't be cleared
+		attachmentRefs[i] = { i, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 	}
 
 	//Create the render pass
 	VkSubpassDescription subpassDesc = Init<VkSubpassDescription>::Base();
-	subpassDesc.colorAttachmentCount = static_cast<uint32_t>(colorFormats.size());
+	subpassDesc.colorAttachmentCount = static_cast<uint32_t>(images.size());
 	subpassDesc.pColorAttachments = &attachmentRefs[0];
 	if (enableDepth)
-		subpassDesc.pDepthStencilAttachment = &attachmentRefs[colorFormats.size() - 1]; //The last attachment is depth
-	
-	
+		subpassDesc.pDepthStencilAttachment = &attachmentRefs[images.size() - 1]; //The last attachment is depth
+
+
 	VkRenderPassCreateInfo rp_create_info = Init<VkRenderPassCreateInfo>::Base();
 	rp_create_info.attachmentCount = numAttachments;
 	rp_create_info.pAttachments = attachmentDescs.data();
 	rp_create_info.subpassCount = 1;
 	rp_create_info.pSubpasses = &subpassDesc;
-	
+
 	res = vkCreateRenderPass(m_device, &rp_create_info, nullptr, &out->m_renderPass);
 	if (Failed(res))
 	{
@@ -692,7 +702,7 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(glm::uvec2 resolution, co
 		return nullptr;
 	}
 
-	VkFramebufferCreateInfo fb_create_info = Init<VkFramebufferCreateInfo>::Create(out->m_renderPass, resolution, out->m_views);
+	VkFramebufferCreateInfo fb_create_info = Init<VkFramebufferCreateInfo>::Create(out->m_renderPass, { images[0].width, images[0].height }, out->m_views);
 	
 	res = vkCreateFramebuffer(m_device, &fb_create_info, nullptr, &out->m_frameBuffer);
 	if (Failed(res))

@@ -1,7 +1,7 @@
 /**
 \file   backend.h
 \author Andrew Baxter
-\date   March 15, 2016
+\date   March 17, 2016
 
 The virtual interface with the Vulkan API
 
@@ -23,7 +23,42 @@ namespace Vulkan
 {
 	constexpr uint32_t numQueues = 1; //Consolidated render + present queue
 	constexpr uint32_t graphicsIndex = 0; //Index of graphics (render + present) queue
-	
+
+	struct GpuProperties
+	{
+		VkPhysicalDeviceFeatures features;
+		VkPhysicalDeviceProperties props;
+		VkPhysicalDeviceMemoryProperties memProps;
+
+		VkFormat depthFormat;
+		VkImageTiling depthTiling;
+
+		std::vector<VkQueueFamilyProperties> queueDescs;
+	};
+
+	struct PresentableSurface
+	{
+		VkSurfaceCapabilitiesKHR caps;
+		VkSurfaceKHR surface;
+		VkFormat colorFormat;
+		uint32_t queueIndex;
+		std::vector<VkPresentModeKHR> presentModes;
+	};
+
+	struct Descriptor
+	{
+		uint32_t bindPoint;
+		VkDescriptorType type;
+		VkShaderStageFlagBits visibility;
+	};
+
+	struct AttachmentDesc
+	{
+		VkFormat format;
+		uint32_t width, height;
+		VkAttachmentLoadOp load;
+		VkAttachmentStoreOp store;
+	};
 
 	class SwapChain
 	{
@@ -35,6 +70,13 @@ namespace Vulkan
 		void NextBuffer();
 		inline const uint32_t *GetBufferIndex() {
 			return &m_currentImage;
+		}
+
+		inline const void SetAttachmentLoadOp(VkAttachmentLoadOp loadOp) {
+			m_desc.load = loadOp;
+		}
+		inline const AttachmentDesc &GetAttachmentDesc() {
+			return m_desc;
 		}
 	private:
 		SwapChain();
@@ -48,6 +90,8 @@ namespace Vulkan
 
 		std::function<void(uint32_t *bufferIndex)> pfnAcquireNextImage;
 		uint32_t m_currentImage;
+
+		AttachmentDesc m_desc;
 	};
 
 	class Shader
@@ -62,19 +106,12 @@ namespace Vulkan
 
 		VkShaderModule m_module;
 	};
-
+	
 	struct ShaderStage
 	{
 		std::shared_ptr<Shader> shader;
 		VkShaderStageFlagBits stage;
 		std::string entryPoint;
-	};
-	
-	struct Descriptor
-	{
-		uint32_t bindPoint;
-		VkDescriptorType type;
-		VkShaderStageFlagBits visibility;
 	};
 	
 	/**
@@ -135,6 +172,8 @@ namespace Vulkan
 		inline uint32_t NumAttachments() {
 			return static_cast<uint32_t>(m_images.size());
 		}
+
+		bool SetClearValues(std::vector<VkClearValue> clearValues);
 	private:
 		FrameBuffer();
 
@@ -144,7 +183,8 @@ namespace Vulkan
 		std::vector<VkImage> m_images;
 		std::vector<VkImageView> m_views;
 		std::vector<VkFormat> m_formats;
-		std::vector<VkDeviceMemory> m_memory; //I think I can just allocate a solid block large enough for all of them
+		std::vector<VkDeviceMemory> m_memory;
+		std::vector<VkClearValue> m_clearValues;
 
 		VkFramebuffer m_frameBuffer;
 		VkRenderPass m_renderPass;
@@ -160,7 +200,7 @@ namespace Vulkan
 
 		bool Begin(bool reusable);
 
-		void BeginRendering(const std::shared_ptr<FrameBuffer> &target, const std::vector<VkClearValue> &clearValues, bool usingBundles = false);
+		void BeginRendering(const std::shared_ptr<FrameBuffer> &target, bool allowBundles);
 
 		void BindGraphicsPipeline(const std::shared_ptr<GraphicsPipeline> &pipeline);
 
@@ -178,7 +218,10 @@ namespace Vulkan
 
 		void SetScissor(const VkRect2D &scissor);
 
-		void Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst, uint32_t fbIndex);
+		/**
+		Blits the first image in the framebuffer to the current buffer of the swap chain
+		*/
+		void Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst);
 
 		void EndRendering();
 
@@ -204,27 +247,6 @@ namespace Vulkan
 		void Release(VkDevice device, VkCommandPool pool); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 
 		VkCommandBuffer m_commandBuffer;
-	};
-	
-	struct GpuProperties
-	{
-		VkPhysicalDeviceFeatures features;
-		VkPhysicalDeviceProperties props;
-		VkPhysicalDeviceMemoryProperties memProps;
-
-		VkFormat depthFormat;
-		VkImageTiling depthTiling;
-
-		std::vector<VkQueueFamilyProperties> queueDescs;
-	};
-
-	struct PresentableSurface
-	{
-		VkSurfaceCapabilitiesKHR caps;
-		VkSurfaceKHR surface;
-		VkFormat colorFormat;
-		uint32_t queueIndex;
-		std::vector<VkPresentModeKHR> presentModes;
 	};
 
 	class Device
@@ -283,12 +305,11 @@ namespace Vulkan
 		/**
 		Creates a swap chain
 		
-		\param[in] setupCmdBuffer Helps to initialize the swap chain. Must be open for writing when passed.
-		\param[in] resolution The resolution to use. May be ignored, depending on GPU quirks
-		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered). May be clamped to fit the GPU's capabilities
+		\param[in] resolution The resolution to use. Might be ignored, depending on GPU quirks.
+		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered). Might be clamped to fit the GPU's capabilities.
 		\return If successful, a pointer to the resulting swap chain. If failed, `nullptr`.
 		*/
-		std::shared_ptr<SwapChain> CreateSwapChain(const std::shared_ptr<CommandBuffer> &setupCmdBuffer, glm::uvec2 resolution, uint32_t numBuffers);
+		std::shared_ptr<SwapChain> CreateSwapChain(glm::uvec2 resolution, uint32_t numBuffers);
 		
 		/**
 		Creates a command buffer
@@ -304,12 +325,11 @@ namespace Vulkan
 		/**
 		Creates a frame buffer
 		
-		\param[in] resolution The size of 
-		\param[in] colorFormats Which formats to create each image with
-		\param[in] enableDepth Should we expect a depth buffer? Defaults to yes
+		\param[in] swapChain The primary render target
+		\param[in] enableDepth Create a depth buffer?
 		\return If successful, a pointer to the resulting frame buffer. If failed, `nullptr`.
 		*/
-		std::shared_ptr<FrameBuffer> CreateFrameBuffer(glm::uvec2 resolution, const std::vector<VkFormat> &colorFormats = {VK_FORMAT_R8G8B8A8_UNORM}, bool enableDepth = true);
+		std::shared_ptr<FrameBuffer> CreateFrameBuffer(const std::vector<AttachmentDesc> &images, bool enableDepth);
 		
 		/**
 		Executes pre-recorded commands stored in a command bundle
