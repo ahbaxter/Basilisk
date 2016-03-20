@@ -27,7 +27,7 @@
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(SolutionDir)dependencies/include;C:/VulkanSDK/1.0.3.1/Include/vulkan</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)dependencies/include;C:/VulkanSDK/1.0.3.1/Include/vulkan</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MinimalRebuild>false</MinimalRebuild>
     </ClCompile>

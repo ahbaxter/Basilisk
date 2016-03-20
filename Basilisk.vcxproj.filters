@@ -54,9 +54,6 @@
     <ClInclude Include="include\rendering\backend.h">
       <Filter>Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="include\rendering\initializers.h">
-      <Filter>Rendering</Filter>
-    </ClInclude>
     <ClInclude Include="include\scene.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -71,10 +68,25 @@
     <ClCompile Include="source\core\task_graph.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="source\rendering\backend.cpp">
+    <ClCompile Include="source\rendering\swapchain.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="source\rendering\initializers.cpp">
+    <ClCompile Include="source\rendering\device.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\framebuffer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\image.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\commandbuffer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\instance.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="source\rendering\pipeline.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
   </ItemGroup>

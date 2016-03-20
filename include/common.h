@@ -43,14 +43,6 @@ inline bool Failed(VkResult val) {
 	return (val < 0);
 }
 
-template<typename T>
-inline T Clamp(const T &val, const T &min, const T &max)
-{
-	return std::max(
-		std::min(val, max),
-		min);
-}
-
 template<typename T, typename std::enable_if<std::is_integral<T>::value>::type>
 inline bool PowerOfTwo(const T &val)
 {

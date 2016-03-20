@@ -157,10 +157,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pScmdline
 	auto device = instance->CreateDeviceOnWindow(0, hWnd, hInstance); //Make sure to always declare a device before any children, to make sure they can deconstruct properly
 	if (!device) return Dump();
 
-	auto swapChain = device->CreateSwapChain({ w, h }, 2); //Double-buffered presentation surface
+	auto swapChain = device->CreateSwapChain(Vulkan::SwapChainCreateInfo({ w, h }, 2)); //Double-buffered presentation surface
 	if (!swapChain) return Dump();
 
-	auto frameBuffer = device->CreateFrameBuffer({swapChain->GetAttachmentDesc()}, false); //A render target mirroring the presentation surface, no depth buffer
+	auto frameBuffer = device->CreateFrameBuffer( {swapChain->GetAttachmentInfo()}, false); //A render target pointing to the swap chain, with no depth buffer
 	if (!frameBuffer) return Dump();
 
 	auto cmdDraw = device->CreateCommandBuffer(Vulkan::graphicsIndex);

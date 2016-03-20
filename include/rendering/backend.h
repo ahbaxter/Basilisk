@@ -1,28 +1,31 @@
 /**
 \file   backend.h
 \author Andrew Baxter
-\date   March 17, 2016
+\date   March 19, 2016
 
 The virtual interface with the Vulkan API
 
 \todo Verbose error reporting of VkResults
 \todo Device::CreateBuffer(...)
 \todo Graphics pipeline vertex input layout
-\todo Can FrameBuffer image memory be contiguous?
 
 */
 
 #ifndef BASILISK_BACKEND_H
 #define BASILISK_BACKEND_H
 
-#include <atomic>
 #include "common.h"
 
 
 namespace Vulkan
 {
-	constexpr uint32_t numQueues = 1; //Consolidated render + present queue
+	constexpr uint32_t numQueues = 1; //A single consolidated render + present queue
 	constexpr uint32_t graphicsIndex = 0; //Index of graphics (render + present) queue
+
+	VkSwapchainCreateInfoKHR SwapChainCreateInfo(glm::tvec2<uint32_t> resolution, uint32_t numBuffers);
+	VkImageCreateInfo ImageCreateInfo(VkImageType dimensionality, VkFormat format, VkExtent3D resolution, VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VkImageLayout initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	VkImageViewCreateInfo ImageViewCreateInfo(VkImage image, VkFormat format, VkImageAspectFlags aspect);
+	VkAttachmentDescription AttachmentDescription(VkFormat format, VkAttachmentLoadOp loadOp);
 
 	struct GpuProperties
 	{
@@ -45,19 +48,17 @@ namespace Vulkan
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
+	struct AttachmentInfo
+	{
+		VkImageCreateInfo image;
+		VkAttachmentDescription attachment;
+	};
+
 	struct Descriptor
 	{
 		uint32_t bindPoint;
 		VkDescriptorType type;
 		VkShaderStageFlagBits visibility;
-	};
-
-	struct AttachmentDesc
-	{
-		VkFormat format;
-		uint32_t width, height;
-		VkAttachmentLoadOp load;
-		VkAttachmentStoreOp store;
 	};
 
 	class SwapChain
@@ -72,12 +73,10 @@ namespace Vulkan
 			return &m_currentImage;
 		}
 
-		inline const void SetAttachmentLoadOp(VkAttachmentLoadOp loadOp) {
-			m_desc.load = loadOp;
-		}
-		inline const AttachmentDesc &GetAttachmentDesc() {
+		inline const AttachmentInfo &GetAttachmentInfo() {
 			return m_desc;
 		}
+
 	private:
 		SwapChain();
 
@@ -91,7 +90,60 @@ namespace Vulkan
 		std::function<void(uint32_t *bufferIndex)> pfnAcquireNextImage;
 		uint32_t m_currentImage;
 
-		AttachmentDesc m_desc;
+		uint32_t m_width, m_height;
+		AttachmentInfo m_desc;
+	};
+	
+
+	class FrameBuffer
+	{
+	public:
+		~FrameBuffer() = default;
+		friend class Device;
+		friend class CommandBuffer;
+
+		inline uint32_t NumAttachments() {
+			return static_cast<uint32_t>(m_images.size());
+		}
+
+		bool SetClearValues(std::vector<VkClearValue> clearValues);
+
+	private:
+		FrameBuffer();
+
+		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
+
+		void ResizeVectors(uint32_t size);
+		std::vector<VkImage> m_images;
+		std::vector<VkImageView> m_views;
+		std::vector<VkFormat> m_formats;
+		std::vector<VkDeviceMemory> m_memory;
+		std::vector<VkClearValue> m_clearValues;
+
+		VkFramebuffer m_frameBuffer;
+		VkRenderPass m_renderPass;
+
+		VkRect2D m_renderArea;
+	};
+
+	class Image
+	{
+	public:
+		~Image() = default;
+		friend class Device;
+		friend class CommandBuffer;
+
+	private:
+		Image();
+
+		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
+
+		VkImage m_image;
+		VkImageView m_view;
+		VkDeviceMemory m_memory;
+		VkFormat m_format;
+
+		VkExtent3D m_size;
 	};
 
 	class Shader
@@ -106,14 +158,14 @@ namespace Vulkan
 
 		VkShaderModule m_module;
 	};
-	
+
 	struct ShaderStage
 	{
 		std::shared_ptr<Shader> shader;
 		VkShaderStageFlagBits stage;
 		std::string entryPoint;
 	};
-	
+
 	/**
 
 	\todo Encapsulate binding descriptions?
@@ -128,7 +180,7 @@ namespace Vulkan
 		PipelineLayout();
 
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
-		
+
 		VkDescriptorSetLayout m_setLayout;
 		VkPipelineLayout m_layout;
 	};
@@ -161,37 +213,6 @@ namespace Vulkan
 		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
 	};
 
-
-	class FrameBuffer
-	{
-	public:
-		~FrameBuffer() = default;
-		friend class Device;
-		friend class CommandBuffer;
-
-		inline uint32_t NumAttachments() {
-			return static_cast<uint32_t>(m_images.size());
-		}
-
-		bool SetClearValues(std::vector<VkClearValue> clearValues);
-	private:
-		FrameBuffer();
-
-		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
-
-		void ResizeVectors(uint32_t size);
-		std::vector<VkImage> m_images;
-		std::vector<VkImageView> m_views;
-		std::vector<VkFormat> m_formats;
-		std::vector<VkDeviceMemory> m_memory;
-		std::vector<VkClearValue> m_clearValues;
-
-		VkFramebuffer m_frameBuffer;
-		VkRenderPass m_renderPass;
-
-		VkRect2D m_renderArea;
-	};
-
 	class CommandBuffer
 	{
 	public:
@@ -219,7 +240,7 @@ namespace Vulkan
 		void SetScissor(const VkRect2D &scissor);
 
 		/**
-		Blits the first image in the framebuffer to the current buffer of the swap chain
+		Blits the last image in the framebuffer to the current buffer of the swap chain
 		*/
 		void Blit(const std::shared_ptr<FrameBuffer> &src, const std::shared_ptr<SwapChain> &dst);
 
@@ -303,13 +324,15 @@ namespace Vulkan
 		std::shared_ptr<GraphicsPipeline> CreateGraphicsPipeline(const std::shared_ptr<FrameBuffer> &frameBuffer, const std::shared_ptr<PipelineLayout> &layout, const std::vector<ShaderStage> &stages, uint32_t patchCtrlPoints = 0);
 
 		/**
-		Creates a swap chain
+		\brief Creates a swap chain
+		Automatically fills in unavailable information such as surface format and presentation mode
 		
-		\param[in] resolution The resolution to use. Might be ignored, depending on GPU quirks.
-		\param[in] numBuffers The number of buffers to use. Defaults to 2 (double-buffered). Might be clamped to fit the GPU's capabilities.
+		\param[in] create_info A Vulkan structure indicating the behavior of the swap chain
 		\return If successful, a pointer to the resulting swap chain. If failed, `nullptr`.
+
+		\todo Is this where I'd opt for vsync?
 		*/
-		std::shared_ptr<SwapChain> CreateSwapChain(glm::uvec2 resolution, uint32_t numBuffers);
+		std::shared_ptr<SwapChain> CreateSwapChain(VkSwapchainCreateInfoKHR &create_info);
 		
 		/**
 		Creates a command buffer
@@ -325,11 +348,11 @@ namespace Vulkan
 		/**
 		Creates a frame buffer
 		
-		\param[in] swapChain The primary render target
-		\param[in] enableDepth Create a depth buffer?
+		\param[in] imagesCreateInfo 
+		\param[in] attachmentCreateInfo 
 		\return If successful, a pointer to the resulting frame buffer. If failed, `nullptr`.
 		*/
-		std::shared_ptr<FrameBuffer> CreateFrameBuffer(const std::vector<AttachmentDesc> &images, bool enableDepth);
+		std::shared_ptr<FrameBuffer> CreateFrameBuffer(std::vector<AttachmentInfo> attachmentCreateInfo, bool depthBuffer);
 		
 		/**
 		Executes pre-recorded commands stored in a command bundle
@@ -362,6 +385,10 @@ namespace Vulkan
 		\return If successful, `true`. If failed, `false`.
 		*/
 		bool PostPresent(const std::shared_ptr<SwapChain> &swapChain);
+
+		inline const VkFormat &GetDepthFormat() {
+			return m_gpuProps.depthFormat;
+		}
 	private:
 		Device();
 
