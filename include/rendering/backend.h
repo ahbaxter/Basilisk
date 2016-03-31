@@ -6,6 +6,7 @@
 The virtual interface with the Vulkan API
 
 \todo Verbose error reporting of VkResults
+\todo Allow for discrete render and present queues
 \todo Device::CreateBuffer(...)
 \todo Graphics pipeline vertex input layout
 
@@ -154,7 +155,7 @@ namespace Vulkan
 	private:
 		Shader();
 
-		void Release(VkDevice device); //Custom deallocator for shared_ptr. Calls Vulkan's vkDestroy... functions to free the memory used
+		void Release(VkDevice device); //Custom deallocator for shared_ptr
 
 		VkShaderModule m_module;
 	};
@@ -164,6 +165,20 @@ namespace Vulkan
 		std::shared_ptr<Shader> shader;
 		VkShaderStageFlagBits stage;
 		std::string entryPoint;
+	};
+	
+	class Buffer
+	{
+	public:
+		~Buffer() = default;
+		friend class Device;
+	private:
+		Buffer();
+		
+		void Release(VkDevice device); //Custom deallocator for shared_ptr
+		
+		VkDeviceMemory m_memory;
+		VkBuffer m_buffer;
 	};
 
 	/**
@@ -175,7 +190,7 @@ namespace Vulkan
 	public:
 		~PipelineLayout() = default;
 		friend class Device;
-
+		
 	private:
 		PipelineLayout();
 
@@ -310,6 +325,16 @@ namespace Vulkan
 		std::shared_ptr<Shader> CreateShaderFromGLSL(const std::string &source, VkShaderStageFlagBits stage);
 		
 		/**
+		Creates a buffer
+		
+		\param[in] data The initial data stored in the buffer
+		\param[in] staged If true, makes the memory faster accessed, but read-only and only visible on the GPU
+		\return If successful, a pointer to the resulting buffer. If failed, `nullptr`.
+		*/
+		template<struct T>
+		std::shared_ptr<Buffer> CreateBuffer(VkBufferUsageFlags usage, const std::vector<T> &data, bool staged);
+		
+		/**
 		Creates a graphics pipeline
 
 		\param[in] state The state of the pipeline at each stage
@@ -401,7 +426,7 @@ namespace Vulkan
 		std::array<VkQueue, numQueues> m_queues;
 		std::array<VkCommandPool, numQueues> m_commandPools;
 		VkSemaphore m_presentComplete, m_renderComplete;
-		VkCommandBuffer m_cmdPrePresent, m_cmdPostPresent;
+		VkCommandBuffer m_cmdPrePresent, m_cmdPostPresent, m_cmdSetup; //Do not change order without compensating in Instance::CreateDeviceOnWindow()
 		VkSubmitInfo m_submitInfo;
 
 		//VK_KHR_swapchain function pointers
@@ -493,6 +518,83 @@ namespace Vulkan
 	\return The number of GPUs connected to this computer. 0 indicates failure.
 	*/
 	std::shared_ptr<Instance> Initialize(const std::string &appName, uint32_t appVersion);
+
+	template<struct T>
+	std::shared_ptr<Buffer> Device::CreateBuffer(const std::vector<T> &data, bool staged)
+	{
+		uint32_t buff_size = static_cast<uint32_t>(sizeof(T) * data.size());
+		VkMemoryAllocateInfo mem_alloc = {
+			VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
+		};
+		VkMemoryRequirements mem_reqs;
+		
+		VkBufferCreateInfo buffer_info = {
+			VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			nullptr, //Next: unused
+			0, //No flags
+			buff_size,
+			0, //Usage is undetermined at this point
+			VK_SHARING_MODE_EXCLUSIVE,
+			0, //Queue family index count
+			nullptr //Queue family indices
+		};
+		
+		VkResult res;
+		void *pData;
+		std::shared_ptr<Buffer> out(new Buffer,
+			[=](Buffer *ptr) {
+				ptr->Release(m_device);
+				delete ptr;
+				ptr = nullptr;
+			}
+		);
+		
+		
+		if (stage)
+		{
+			Buffer intermediate;
+			buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+			
+			res = vkCreateBuffer(m_device, &buffer_info, nullptr, &intermediate.m_buffer);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not create the intermediate buffer");
+				return nullptr;
+			}
+				vkGetBufferMemoryRequirements(m_device, &intermediate.m_buffer, mem_reqs);
+				
+			mem_alloc.allocationSize = mem_reqs.size();
+			if (!GetMemoryTypeFromProps(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &mem_alloc.memoryTypeIndex))
+			{
+				Basilisk.errors.push("Vulkan::Device::CreateBuffer() could not determine required memory type for the intermediate buffer");
+				return nullptr;
+			}
+			res = vkAllocateMemory(m_device, &mem_alloc, nullptr, &intermediate.m_memory);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not allocate intermediate buffer memory");
+				return nullptr;
+			}
+			
+			res = vkMapMemory(m_device, intermediate.m_memory, 0, mem_alloc.allocationSize, 0, 
+			&pData);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not copy to the intermediate buffer");
+				return nullptr;
+			}
+			
+			//Continue here
+			
+			intermediate.Release();
+		}
+		else
+		{
+			
+		}
+	
+		return out;
+	}
 }
 
 #endif

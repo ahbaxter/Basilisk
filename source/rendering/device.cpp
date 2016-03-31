@@ -62,6 +62,11 @@ void Device::Release() {
 		vkFreeCommandBuffers(m_device, m_commandPools[graphicsIndex], 1, &m_cmdPostPresent);
 		m_cmdPostPresent = VK_NULL_HANDLE;
 	}
+	if (m_cmdSetup)
+	{
+		vkFreeCommandBuffers(m_device, m_commandPools[graphicsIndex], 1, &m_cmdSetup);
+		m_cmdSetup = VK_NULL_HANDLE;
+	}
 	//Release command pools
 	for (auto &iter : m_commandPools)
 	{
@@ -317,24 +322,18 @@ std::shared_ptr<Device> Instance::CreateDeviceOnWindow(uint32_t gpuIndex, HWND h
 		return nullptr;
 	}
 
-	//Create pre-present and post-present command buffers
-	VkCommandBufferAllocateInfo cmd_info = {
+	//Create pre-present, post-present, and setup command buffers
+	VkCommandBufferAllocateInfo cmd_buffer_info = {
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		nullptr,
 		out->m_commandPools[graphicsIndex],
 		VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		1
+		3
 	};
-	res = vkAllocateCommandBuffers(out->m_device, &cmd_info, &out->m_cmdPrePresent);
+	res = vkAllocateCommandBuffers(out->m_device, &cmd_buffer_info, &out->m_cmdPrePresent);
 	if (Failed(res))
 	{
-		Basilisk::errors.push("Vulkan::Instance::CreateDevice() could not create the pre-present command buffer");
-		return nullptr;
-	}
-	res = vkAllocateCommandBuffers(out->m_device, &cmd_info, &out->m_cmdPostPresent);
-	if (Failed(res))
-	{
-		Basilisk::errors.push("Vulkan::Instance::CreateDevice() could not create the post-present command buffer");
+		Basilisk::errors.push("Vulkan::Instance::CreateDevice() could not create the required command buffers");
 		return nullptr;
 	}
 	//Store submit info for graphics commands
@@ -673,10 +672,10 @@ std::shared_ptr<GraphicsPipeline> Device::CreateGraphicsPipeline(const std::shar
 
 	std::shared_ptr<GraphicsPipeline> out(new GraphicsPipeline,
 		[=](GraphicsPipeline *ptr) {
-		ptr->Release(m_device);
-		delete ptr;
-		ptr = nullptr;
-	}
+			ptr->Release(m_device);
+			delete ptr;
+			ptr = nullptr;
+		}
 	);
 
 	VkResult res = vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &out->m_pipeline);

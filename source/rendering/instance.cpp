@@ -19,7 +19,7 @@ uint32_t layerCount() {
 	return 6;
 }
 const char *lyrNames[6] = {
-	"VK_LAYER_LUNARG_threading",
+	"VK_LAYER_GOOGLE_threading",
 	"VK_LAYER_LUNARG_draw_state",
 	"VK_LAYER_LUNARG_image",
 	"VK_LAYER_LUNARG_mem_tracker",

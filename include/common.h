@@ -18,6 +18,7 @@ Includes universally-required headers and defines some rudimentary functions
 #include <string>
 #include <memory>
 #include <functional>
+#define GLM_FORCE_RADIANS
 #include <glm/glm/glm.hpp>
 
 #ifdef _WIN32
