@@ -331,7 +331,7 @@ namespace Vulkan
 		\param[in] staged If true, makes the memory faster accessed, but read-only and only visible on the GPU
 		\return If successful, a pointer to the resulting buffer. If failed, `nullptr`.
 		*/
-		template<struct T>
+		template<typename T>
 		std::shared_ptr<Buffer> CreateBuffer(VkBufferUsageFlags usage, const std::vector<T> &data, bool staged);
 		
 		/**
@@ -519,8 +519,8 @@ namespace Vulkan
 	*/
 	std::shared_ptr<Instance> Initialize(const std::string &appName, uint32_t appVersion);
 
-	template<struct T>
-	std::shared_ptr<Buffer> Device::CreateBuffer(const std::vector<T> &data, bool staged)
+	template<typename T>
+	std::shared_ptr<Buffer> Device::CreateBuffer(VkBufferUsageFlags usage, const std::vector<T> &data, bool staged)
 	{
 		uint32_t buff_size = static_cast<uint32_t>(sizeof(T) * data.size());
 		VkMemoryAllocateInfo mem_alloc = {
@@ -540,9 +540,9 @@ namespace Vulkan
 		};
 		
 		VkResult res;
-		void *pData;
+		void *mapped;
 		std::shared_ptr<Buffer> out(new Buffer,
-			[=](Buffer *ptr) {
+			[=](Buffer *&ptr) {
 				ptr->Release(m_device);
 				delete ptr;
 				ptr = nullptr;
@@ -552,16 +552,25 @@ namespace Vulkan
 		
 		if (stage)
 		{
-			Buffer intermediate;
+			//Create intermediate buffer
+			std::unique_ptr<Buffer> intermediate(new Buffer, 
+				[=](Buffer *&ptr)
+				{
+					ptr->Release(m_device);
+					delete ptr;
+					ptr = nullptr;
+				}
+			);
+
 			buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 			
-			res = vkCreateBuffer(m_device, &buffer_info, nullptr, &intermediate.m_buffer);
+			res = vkCreateBuffer(m_device, &buffer_info, nullptr, &intermediate->m_buffer);
 			if (Failed(res))
 			{
 				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not create the intermediate buffer");
 				return nullptr;
 			}
-				vkGetBufferMemoryRequirements(m_device, &intermediate.m_buffer, mem_reqs);
+			vkGetBufferMemoryRequirements(m_device, &intermediate->m_buffer, mem_reqs);
 				
 			mem_alloc.allocationSize = mem_reqs.size();
 			if (!GetMemoryTypeFromProps(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &mem_alloc.memoryTypeIndex))
@@ -569,28 +578,158 @@ namespace Vulkan
 				Basilisk.errors.push("Vulkan::Device::CreateBuffer() could not determine required memory type for the intermediate buffer");
 				return nullptr;
 			}
-			res = vkAllocateMemory(m_device, &mem_alloc, nullptr, &intermediate.m_memory);
+			res = vkAllocateMemory(m_device, &mem_alloc, nullptr, &intermediate->m_memory);
 			if (Failed(res))
 			{
 				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not allocate intermediate buffer memory");
 				return nullptr;
 			}
 			
-			res = vkMapMemory(m_device, intermediate.m_memory, 0, mem_alloc.allocationSize, 0, 
-			&pData);
+			//Fill the intermediate buffer
+			res = vkMapMemory(m_device, intermediate->m_memory, 0, mem_alloc.allocationSize, 0,  &mapped);
 			if (Failed(res))
 			{
 				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not copy to the intermediate buffer");
 				return nullptr;
 			}
-			
-			//Continue here
-			
-			intermediate.Release();
+
+			memcpy_s(mapped, buff_size, data.data(), buff_size);
+
+			vkUnmapMemory(m_device, intermediate->m_memory);
+			res = vkBindBufferMemory(m_device, intermediate->m_buffer, intermediate->m_memory, 0);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not map intermediate buffer memory");
+				return nullptr;
+			}
+
+			//Create destination buffer
+			buffer_info.usage = usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+			res = vkCreateBuffer(m_device, &buffer_info, nullptr, &out->m_buffer);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not create the buffer");
+				return nullptr;
+			}
+			vkGetBufferMemoryRequirements(m_device, &out->m_buffer, mem_reqs);
+
+			mem_alloc.allocationSize = mem_reqs.size();
+			if (!GetMemoryTypeFromProps(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &mem_alloc.memoryTypeIndex))
+			{
+				Basilisk.errors.push("Vulkan::Device::CreateBuffer() could not determine required memory type for the buffer");
+				return nullptr;
+			}
+			res = vkAllocateMemory(m_device, &mem_alloc, nullptr, &out->m_memory);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not allocate buffer memory");
+				return nullptr;
+			}
+			res = vkBindBufferMemory(m_device, out->m_buffer, out->m_memory, 0);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not bind buffer memory");
+				return nullptr;
+			}
+
+			//Copy to destination buffer
+			VkCommandBufferBeginInfo cmd_begin_info = {
+				VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+				nullptr, //Next: reserved
+				VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, //Flags
+				nullptr //Inheritance info
+			};
+			VkBufferCopy copy_region = {
+				0, //Source offset
+				0, //Destination offset
+				buff_size //Size
+			};
+
+			res = vkBeginCommandBuffer(m_cmdSetup, &cmd_begin_info);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not begin the setup command buffer");
+				return nullptr;
+			}
+			vkCmdCopyBuffer(m_cmdSetup, intermediate->m_buffer, out->m_buffer, 1, &copy_region);
+			res = vkEndCommandBuffer(m_cmdSetup);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not end the setup command buffer");
+				return nullptr;
+			}
+
+			//Flush the setup command buffer
+			VkSubmitInfo cmd_submit_info = {
+				VK_STRUCTURE_TYPE_SUBMIT_INFO,
+				nullptr, //Next
+				0, nullptr, nullptr, //Wait semaphores
+				1, &m_cmdSetup, //Command buffers
+				0, nullptr //Signal semaphores
+			};
+			res = vkQueueSubmit(m_queues[graphicsIndex], 1, &cmd_submit_info, VK_NULL_HANDLE);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not submit the setup command buffer");
+				return nullptr;
+			}
+			res = vkQueueWaitIdle(m_queues[graphicsIndex]);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not wait on the setup command buffer");
+				return nullptr;
+			}
 		}
 		else
 		{
-			
+			//Create the buffer
+			buffer_info.usage = usage;
+			res = vkCreateBuffer(m_device, &buffer_info, nullptr, &out->m_buffer);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not create the buffer");
+				return nullptr;
+			}
+			vkGetBufferMemoryRequirements(m_device, &out->m_buffer, mem_reqs);
+
+			mem_alloc.allocationSize = mem_reqs.size();
+			if (!GetMemoryTypeFromProps(mem_reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &mem_alloc.memoryTypeIndex))
+			{
+				Basilisk.errors.push("Vulkan::Device::CreateBuffer() could not determine required memory type for the buffer");
+				return nullptr;
+			}
+			res = vkAllocateMemory(m_device, &mem_alloc, nullptr, &out->m_memory);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not allocate buffer memory");
+				return nullptr;
+			}
+
+			//Fill the buffer
+			res = vkMapMemory(m_device, out->m_memory, 0, mem_alloc.allocationSize, 0, &mapped);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not copy to the buffer");
+				return nullptr;
+			}
+
+			memcpy_s(mapped, buff_size, data.data(), buff_size);
+
+			vkUnmapMemory(m_device, out->m_memory);
+			res = vkBindBufferMemory(m_device, out->m_buffer, out->m_memory, 0);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not map buffer memory");
+				return nullptr;
+			}
+
+			res = vkBindBufferMemory(m_device, out->m_buffer, out->m_memory, 0);
+			if (Failed(res))
+			{
+				Basilisk::errors.push("Vulkan::Device::CreateBuffer() could not bind buffer memory");
+				return nullptr;
+			}
 		}
 	
 		return out;

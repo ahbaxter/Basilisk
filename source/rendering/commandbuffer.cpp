@@ -21,7 +21,7 @@ void CommandBuffer::Release(VkDevice device, VkCommandPool pool)
 std::shared_ptr<CommandBuffer> Device::CreateCommandBuffer(uint32_t poolIndex, bool bundle)
 {
 	std::shared_ptr<CommandBuffer> out(new CommandBuffer,
-		[=](CommandBuffer *ptr) {
+		[=](CommandBuffer *&ptr) {
 			ptr->Release(m_device, m_commandPools[poolIndex]);
 			delete ptr;
 			ptr = nullptr;

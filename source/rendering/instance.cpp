@@ -77,7 +77,7 @@ Instance::Instance() : m_instance(VK_NULL_HANDLE)
 std::shared_ptr<Instance> Vulkan::Initialize(const std::string &appName, uint32_t appVersion)
 {
 	std::shared_ptr<Instance> out(new Instance,
-		[](Instance *ptr) { //Custom deallocator
+		[=](Instance *&ptr) { //Custom deallocator
 			ptr->Release();
 			delete ptr;
 			ptr = nullptr;

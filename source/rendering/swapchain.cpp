@@ -101,7 +101,7 @@ std::shared_ptr<SwapChain> Device::CreateSwapChain(VkSwapchainCreateInfoKHR &swa
 
 	//Create the swap chain
 	std::shared_ptr<SwapChain> out(new SwapChain,
-		[=](SwapChain *ptr) {
+		[=](SwapChain *&ptr) {
 			ptr->Release(m_device, pfnDestroySwapchainKHR);
 			delete ptr;
 			ptr = nullptr;

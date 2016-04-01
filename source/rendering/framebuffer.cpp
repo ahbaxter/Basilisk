@@ -97,7 +97,7 @@ std::shared_ptr<FrameBuffer> Device::CreateFrameBuffer(std::vector<AttachmentInf
 	}
 
 	std::shared_ptr<FrameBuffer> out(new FrameBuffer,
-		[=](FrameBuffer *ptr) {
+		[=](FrameBuffer *&ptr) {
 			ptr->Release(m_device);
 			delete ptr;
 			ptr = nullptr;
